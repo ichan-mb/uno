@@ -63,34 +63,6 @@
     <Set Mobile.DisableBatterySaver="@('@(MOBILE:Defined) && @(Project.Mobile.KeepAlive)':Test(1, 0))" />
     <Set Mobile.DisableBackgroundProcess="@('@(MOBILE:Defined) && !@(Project.Mobile.RunsInBackground)':Test(1, 0))" />
 
-    <!-- Deprecated -->
-    <Deprecate Android.Activity.Class.Declaration="Activity.Class.Declaration" />
-    <Deprecate Android.Activity.File.Declaration="Activity.File.Declaration" />
-    <Deprecate Android.Manifest.ApplicationElement="AndroidManifest.ApplicationElement" />
-    <Deprecate Android.Manifest.RootElement="AndroidManifest.RootElement" />
-    <Deprecate Android.Runtime.CatchCppExceptions="Runtime.CatchCppExceptions" />
-    <Deprecate Android.Runtime.CppMainLoop="Runtime.CppMainLoop" />
-    <Deprecate Android.Runtime.DebugPauseMilliseconds="Runtime.DebugPauseMilliseconds" />
-    <Deprecate Android.Runtime.KillActivityOnDestroy="Runtime.KillActivityOnDestroy" />
-    <Deprecate Android.Runtime.KillOnBackButton="Runtime.KillOnBackButton" />
-    <Deprecate Android.Runtime.SeperateUnoThread="Runtime.SeperateUnoThread" />
-    <Deprecate AndroidBuildBat.PreBuildLines="BuildBat.PreBuild" />
-    <Deprecate AndroidBuildSh.PreBuildLines="BuildSh.PreBuild" />
-    <Deprecate AndroidProjectFile.Properties="Project.Property" />
-    <Deprecate Build.HeaderFile="HeaderFile" />
-    <Deprecate Build.IncludeDirectory="IncludeDirectory" />
-    <Deprecate Build.LinkDirectory="LinkDirectory" />
-    <Deprecate Build.LinkLibrary="LinkLibrary" />
-    <Deprecate Build.PreprocessorDefinition="PreprocessorDefinition" />
-    <Deprecate Build.SourceFile="SourceFile" />
-    <Deprecate InstanceTypeName="TypeName" />
-    <Deprecate iOS.BackgroundModes="Project.iOS.PList.UIBackgroundModes" />
-    <Deprecate iOS.Build.Framework="Xcode.Framework" />
-    <Deprecate iOS.Framework="Xcode.Framework" />
-    <Deprecate iOS.PrefixHeader.Declaration="Xcode.PrefixHeader.Declaration" />
-    <Deprecate Java.Extern.RegisterFunctions="Java.Extern.RegisterFunction" />
-    <Deprecate Source.FileExtension="FileExtension" />
-
     <!-- Keywords -->
     <Set Keywords>
         alignas alignof and and_eq asm auto bitand bitor bool
@@ -105,7 +77,7 @@
         typename union unsigned using virtual void volatile wchar_t
         while xor xor_eq
 
-        NULL
+        NULL alloca calloc malloc realloc free
         int8_t int16_t int32_t int64_t uint8_t uint16_t uint32_t
         uint64_t DBL_MAX DBL_INF DBL_NAN FLT_INF FLT_NAN
         op_Implicit op_Explicit

@@ -6,20 +6,27 @@ source scripts/common.sh
 # Arguments
 TARGET=$1
 
-# Run uno tests
-uno test $TARGET lib $UNO_TEST_ARGS
+# Show uno config
+uno config -v
 
-# Skip when testing 'native' on AppVeyor
-if [[ "$APPVEYOR" != True || "$TARGET" != native ]]; then
+h1 "Starting test suite"
+########################
+
+# Run uno tests
+if [[ "$SKIP_LIB_TESTS" != 1 ]]; then
+    uno test $TARGET lib $UNO_TEST_ARGS
+fi
+
+if [[ "$SKIP_UNO_TESTS" != 1 ]]; then
     uno test $TARGET tests/src/{Uno,UX}Test $UNO_TEST_ARGS
 fi
 
 # Run compiler tests
 function uno-compiler-test {
     for config in Debug Release; do
-        exe=src/testing/Uno.CompilerTestRunner/bin/$config/uno-compiler-test.exe
+        exe=src/test/compiler-test/bin/$config/uno-compiler-test.exe
         if [ -f $exe ]; then
-            dotnet-clr $exe
+            dotnet-run $exe
             return $?
         fi
     done
@@ -28,7 +35,9 @@ function uno-compiler-test {
     return 1
 }
 
-uno-compiler-test
+if [[ "$TARGET" == dotnet ]]; then
+    uno-compiler-test
+fi
 
 # Check that all packages build without errors
 uno build $TARGET --no-strip tests/pkgtest

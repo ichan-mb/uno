@@ -1,11 +1,12 @@
 version: '{build}'
-image: Visual Studio 2017
+image: Visual Studio 2019
 
 environment:
   matrix:
   - TARGET: dotnet
   - TARGET: native
     UNO_TEST_ARGS: -DDEBUG_UNSAFE
+    SKIP_UNO_TESTS: 1
 
 install:
   - ps: |
@@ -18,8 +19,11 @@ install:
 build_script:
   - npm pack --silent
 
-artifacts:
-  - path: '*.tgz'
+after_build:
+  - ps: |
+      if ($env:Target -eq "dotnet") {
+        Push-AppveyorArtifact "*.tgz"
+      }
 
 before_test:
   - ps: |
@@ -33,7 +37,6 @@ before_test:
 
 test_script:
   - nunit3-console
-      src\testing\Uno.TestRunner.Tests\bin\Release\Uno.TestRunner.Tests.dll
-      src\ux\Uno.UX.Markup.AST\Tests\bin\Release\Uno.UX.Markup.AST.Tests.dll
-      src\ux\Uno.UX.Markup.UXIL\Tests\bin\Release\Uno.UX.Markup.UXIL.Tests.dll
-  - bash scripts\test.sh %TARGET%
+      src\test\tests\bin\Release\Uno.TestRunner.Tests.dll
+      src\ux\tests\bin\Release\Uno.UX.Markup.Tests.dll
+  - npm test %TARGET%

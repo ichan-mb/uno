@@ -35,18 +35,12 @@ function csharp-clean {
     fi
 }
 
-function dotnet-clr {
-    if [ "$OSTYPE" = msys ]; then
-        "$@"
-    elif which mono64 > /dev/null 2>&1; then
-        mono64 "$@"
-    else
-        mono "$@"
-    fi
+function dotnet-run {
+    node_modules/.bin/dotnet-run "$@"
 }
 
 function uno {
-    dotnet-clr bin/uno.exe "$@"
+    dotnet-run bin/uno.exe "$@"
 }
 
 function h1 {
