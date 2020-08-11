@@ -60,6 +60,10 @@ function rm-all {
     done
 }
 
+function filecompare {
+    node_modules/.bin/filecompare "$i" "$file" | grep true > /dev/null
+}
+
 function rm-identical {
     local root=$1
     shift
@@ -67,17 +71,20 @@ function rm-identical {
     for i in `find-all "$@"`; do
         local file="$root/`basename $i`"
         [ -f "$file" ] || continue
-        node_modules/.bin/filecompare "$i" "$file" > /dev/null || continue
+        filecompare "$i" "$file" || continue
         echo "stripping $file"
         rm -rf "$file"
+        # Add placeholder for restore.js
+        touch "$file.restore"
     done
 }
 
 h1 "Optimizing package"
 
-# Xamarin.Mac will be added back by restore.js
+# OpenTK and Xamarin.Mac will be added back by restore.js
 rm-identical bin node_modules/@fuse-open/xamarin-mac *.dll *.dylib
 rm-identical bin/mac node_modules/@fuse-open/xamarin-mac *.dll *.dylib
+rm-identical bin/win node_modules/@fuse-open/opentk *.dll
 
 # Drop superfluous build artifacts
 rm-all bin *.config *.mdb *.pdb *.xml

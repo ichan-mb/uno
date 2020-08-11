@@ -37,6 +37,7 @@ namespace Uno.CLI.Projects
             WriteRow("-s, --set:NAME=STRING",       "Override build system property");
             WriteRow("-o, --out-dir=PATH",          "Override output directory");
             WriteRow("-b, --build-only",            "Build only; don't run or open debugger");
+            WriteRow("-g, --gen-only",              "Generate only; don't compile generated code.");
             WriteRow("-f, --force",                 "Build even if output is up-to-date");
             WriteRow("-l, --libs",                  "Rebuild package library if necessary");
             WriteRow("-p, --print-internals",       "Print a list of build system properties");
@@ -68,7 +69,7 @@ namespace Uno.CLI.Projects
             WriteHead("Available build targets", 19);
 
             foreach (var c in BuildTargets.Enumerate(Log.EnableExperimental))
-                WriteRow("* " + c.Identifier.ToLowerInvariant(), c.Description);
+                WriteRow("* " + c.Identifier, c.Description);
         }
 
         public override void Execute(IEnumerable<string> args)
@@ -87,22 +88,23 @@ namespace Uno.CLI.Projects
                 log = Log;
 
             string targetName = null;
-            var options = new BuildOptions {PackageTarget = BuildTargets.Package};
+            var options = new BuildOptions();
             var nativeArgs = new List<string>();
             var runArgs = new List<string>();
             var run = false;
             var buildOnly = false;
+            var genOnly = false;
             var input = new OptionSet {
                     { "t=|target=",             value => targetName = value },
                     { "c=|configuration=",      value => options.Configuration = value.ParseEnum<BuildConfiguration>("configuration") },
                     { "s=|set=",                value => value.ParseProperty("s|set", options.Settings) },
                     { "p|print-internals",      value => options.PrintInternals = true },
-                    { "o=|out-dir|output-dir=", value => options.OutputDirectory = value },
+                    { "o=|out-dir=|output-dir=",    value => options.OutputDirectory = value },
                     { "m=|main=|main-class=",   value => options.MainClass = value },
                     { "n=|native-args=",        nativeArgs.Add },
                     { "a=|run-args=",           runArgs.Add },
                     { "P|no-parallel",          value => options.Parallel = false },
-                    { "N|q|no-native",          value => options.Native = false },
+                    { "N|q|no-native",          value => options.NativeBuild = false },
                     { "S|e|no-strip",           value => options.Strip = false },
                     { "E=|max-errors=",         value => Log.MaxErrorCount = value.ParseInt("E") },
                     { "W=",                     value => options.WarningLevel = value.ParseInt("W") },
@@ -114,7 +116,8 @@ namespace Uno.CLI.Projects
                     { "d|debug",                value => runArgs.Add("debug") },
                     { "r|run",                  value => run = true },
                     { "b|build-only",           value => buildOnly = true },
-                    { "l|libs",                 value => options.Library = true },
+                    { "g|gen-only",             value => genOnly = true },
+                    { "l|libs",                 value => options.UpdateLibrary = true },
                     { "f|force",                value => options.Force = true },
                     { "cd=",                    value => Directory.SetCurrentDirectory(value.ParseString("cd")) },
                     { "v",                      value => log.Level++ },
@@ -128,12 +131,15 @@ namespace Uno.CLI.Projects
 
             if (runArgs.Count > 0 && runArgs[0] == "debug")
             {
-                options.Native = false; // disable native build
+                options.NativeBuild = false; // disable native build
                 options.Defines.Add("DEBUG_NATIVE"); // disable native optimizations (debug build)
             }
 
-            if (buildOnly)
+            if (buildOnly || genOnly)
             {
+                if (genOnly)
+                    options.NativeBuild = false;
+
                 runArgs.Clear();
                 run = false;
             }

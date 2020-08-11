@@ -43,7 +43,7 @@ namespace Uno.TestRunner
                     var log = Log.Default;
                     var target = _options.Target;
                     var proj = Project.Load(_unoProj);
-                    var outputDirectory = _options.OutputDirectory ?? Path.GetFullPath(Path.Combine(proj.BuildDirectory, "Test", target.Identifier));
+                    var outputDirectory = _options.OutputDirectory ?? proj.GetOutputDirectory("Test", target);
 
                     var options = new BuildOptions {
                         Test = true,
@@ -51,8 +51,7 @@ namespace Uno.TestRunner
                         TestFilter = _options.Filter,
                         OutputDirectory = outputDirectory,
                         WarningLevel = 1,
-                        Library = _options.Library,
-                        PackageTarget = BuildTargets.Package
+                        UpdateLibrary = _options.UpdateLibrary
                     };
 
                     options.Defines.AddRange(_options.Defines);
@@ -61,11 +60,16 @@ namespace Uno.TestRunner
                     if (_options.Target is iOSBuild && !proj.MutableProperties.ContainsKey("iOS.BundleIdentifier"))
                         proj.MutableProperties["iOS.BundleIdentifier"] = "dev.testprojects." + proj.Name.ToIdentifier(true).ToLower();
 
+                    if (_options.OnlyGenerate)
+                        options.NativeBuild = false;
+
                     var builder = new ProjectBuilder(log, target, options);
                     var result = builder.Build(proj);
+
                     if (result.ErrorCount != 0)
                         throw new Exception("Build failed.");
-                    if (_options.OnlyBuild)
+
+                    if (_options.OnlyBuild || _options.OnlyGenerate)
                         return tests;
 
                     // We don't need a window when running tests.
@@ -85,7 +89,7 @@ namespace Uno.TestRunner
                     finally
                     {
                         if ((target is AndroidBuild || target is iOSBuild) &&
-                            !_options.NoUninstall &&
+                            !_options.DontUninstall &&
                             runTask != null)
                         {
                             // Wait a little more for app to quit, after that we don't care

@@ -5,7 +5,6 @@ using System.Reflection;
 using Uno.Collections;
 using Uno.Compiler;
 using Uno.Compiler.ExportTargetInterop;
-using Uno.Runtime.Implementation;
 using Uno.Threading;
 using Uno.Platform;
 using Uno.Text;
@@ -322,9 +321,20 @@ namespace Uno.IO
                 if (!asm.GlobalAssemblyCache && asm.GetName().Name == name)
                     return asm;
 
-            // Lazy-load the assembly.
-            var e = _main ?? Assembly.GetExecutingAssembly();
-            return Assembly.LoadFrom(Path.Combine(Path.GetDirectoryName(e.Location), name + ".dll"));
+            try
+            {
+                // Lazy-load the assembly.
+                var e = _main ?? Assembly.GetExecutingAssembly();
+                return Assembly.LoadFrom(Path.Combine(Path.GetDirectoryName(e.Location), name + ".dll"));
+            }
+            catch
+            {
+                if (_main == null)
+                    Console.Error.WriteLine("Bundle: Not initialized?");
+
+                Console.Error.WriteLine("The assembly '" + name + "' could not be loaded.");
+                throw;
+            }
         }
     }
 

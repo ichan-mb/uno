@@ -39,7 +39,7 @@ namespace Uno.Build
         public bool IsUpToDate => !_options.Force && _file.Exists &&
                                   !_input.HasAnythingChangedSince(_file.Timestamp) &&
                                   _file.Load() == GetHashCode();
-        public bool CanBuildNative => _options.Native && _target.CanBuild(_file) && (
+        public bool CanBuildNative => _options.NativeBuild && _target.CanBuild(_file) && (
                                       _options.Force ||
                                       !_file.IsProductUpToDate);
 
@@ -140,19 +140,15 @@ namespace Uno.Build
 
             _file.Delete();
             _env.Define(_target.Identifier, "TARGET_" + _target.Identifier,
-                _backend.Name, _backend.ShaderBackend.Name, _backend.ShaderBackend.Name, 
-                _backend.BuildType.ToString());
+                _backend.Name, _backend.ShaderBackend.Name);
 
-            if (!string.IsNullOrEmpty(_target.FormerName))
-                _env.Define(_target.FormerName);
             if (_compilerOptions.Debug)
                 _env.Define("DEBUG");
             if (_options.Configuration != BuildConfiguration.Debug)
                 _env.Define(_options.Configuration.ToString().ToUpperInvariant());
             if (_options.Configuration == BuildConfiguration.Preview)
-                _env.Define("REFLECTION", "SIMULATOR", "STACKTRACE", "DesignMode");
-            if (Log.EnableExperimental)
-                _options.Defines.Add("EXPERIMENTAL");
+                _env.Define("REFLECTION", "SIMULATOR", "STACKTRACE");
+
             foreach (var def in StuffFile.DefaultDefines)
                 _env.Define("HOST_" + def);
             foreach (var def in _options.Defines)
@@ -189,7 +185,7 @@ namespace Uno.Build
             else
                 unoExe = _config.GetFullPath("Uno.Exe");
 
-            _env.Set("Uno", PlatformDetection.IsWindows
+            _env.Set("uno", PlatformDetection.IsWindows
                 ? unoExe.QuoteSpace()
                 : MonoInfo.GetPath().QuoteSpace() + " " + unoExe.QuoteSpace());
 
@@ -250,6 +246,7 @@ namespace Uno.Build
                 _file.Product = _env.GetString("Product");
                 _file.BuildCommand = _env.GetString("Commands.Build");
                 _file.RunCommand = _env.GetString("Commands.Run");
+                _file.UnoVersion = UnoVersion.InformationalVersion;
 
                 if (!Log.HasErrors)
                 {

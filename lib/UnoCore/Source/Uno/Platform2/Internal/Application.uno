@@ -2,10 +2,7 @@ using Uno.Compiler.ExportTargetInterop;
 
 namespace Uno.Platform2.Internal
 {
-    // The purpose of this class is to make Uno.Platform.CoreApp
-    // entrypoints accessible from C# assemblies and the fusetool without making
-    // the entrypoints otherwise part of the public API for Platform2.
-
+    [Obsolete("Please use Uno.Platform.Internal.DotNetApplication instead")]
     public extern(DOTNET) static class Application
     {
         public static void Start() { Uno.Platform.CoreApp.Start(); }
