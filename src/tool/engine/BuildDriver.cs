@@ -179,15 +179,7 @@ namespace Uno.Build
             foreach (var e in _options.Settings)
                 _env.Set(e.Key, GetCommandLineValue(e.Value), Disambiguation.Override);
 
-            var unoExe = _config.GetFullPath("UnoExe", false);
-            if (unoExe != null)
-                Log.Warning(".unoconfig: 'UnoExe' is deprecated -- replace with 'Uno.Exe'");
-            else
-                unoExe = _config.GetFullPath("Uno.Exe");
-
-            _env.Set("uno", PlatformDetection.IsWindows
-                ? unoExe.QuoteSpace()
-                : MonoInfo.GetPath().QuoteSpace() + " " + unoExe.QuoteSpace());
+            _env.Set("uno", _config.GetFullPath("Uno.Command").QuoteSpace());
 
             if (Log.HasErrors)
                 return null;
@@ -232,7 +224,7 @@ namespace Uno.Build
             if (Log.HasErrors)
                 return null;
 
-            _anim = Log.StartAnimation("Generating code and data");
+            _anim = Log.StartAnimation("Generating " + _compiler.Backend.What);
 
             try
             {
@@ -263,7 +255,8 @@ namespace Uno.Build
             using (Log.StartAnimation("Building " + _target.ToString().ToLower() + (
                     _backend.BuildType == BuildType.Executable && !_env.IsDefined("LIBRARY")
                         ? " app"
-                        : " library")))
+                        : " library") +
+                    " (" + _compilerOptions.Configuration.ToString().ToLower() + ")"))
             {
                 if (!_target.Build(_compiler.Shell, _file, _options.NativeArguments))
                     Log.Error(Source.Unknown, ErrorCode.E0200, _target + " build failed");
