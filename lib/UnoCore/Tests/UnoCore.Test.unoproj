@@ -56,6 +56,7 @@
     "Time/ZonedDateTimeTests.uno:Source",
     "Text/AsciiEncoding.Test.uno:Source",
     "Text/Base64.Test.uno:Source",
+    "Text/Regex.Test.uno:Source",
     "Text/StringBuilder.Test.uno:Source",
     "Text/Utf8Encoding.Test.uno:Source",
     "UX/UXHelpers/AttachedPropertyTest.ux:UX",
