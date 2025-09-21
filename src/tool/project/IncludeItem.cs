@@ -79,6 +79,7 @@ namespace Uno.ProjectFormat
                 case IncludeItemType.ObjCHeader:
                 case IncludeItemType.ObjCSource:
                 case IncludeItemType.Swift:
+                case IncludeItemType.Kotlin:
                     return true;
                 default:
                     return false;
@@ -106,6 +107,8 @@ namespace Uno.ProjectFormat
                         return ForeignItem.Kind.ObjCSource;
                     case IncludeItemType.Swift:
                         return ForeignItem.Kind.Swift;
+                    case IncludeItemType.Kotlin:
+                        return ForeignItem.Kind.Kotlin;
                     default:
                         throw new InvalidOperationException("Not a foreign include item");
                 }

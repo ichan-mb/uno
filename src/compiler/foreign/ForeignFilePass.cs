@@ -76,16 +76,16 @@ namespace Uno.Compiler.Foreign
 
         SourceValue? GetRequiredDestination(ForeignItem fsource, Source projectSource)
         {
-            if (fsource.SourceKind != ForeignItem.Kind.Java)
+            if (fsource.SourceKind != ForeignItem.Kind.Java && fsource.SourceKind != ForeignItem.Kind.Kotlin)
                 return null;
 
             var fullJavaSourcePath = fsource.UnixPath.UnixToNative()
                     .ToFullPath(projectSource.Bundle.SourceDirectory);
-            var packageName = GetJavaPackageName(fullJavaSourcePath);
+            var packageName = GetJavaPackageName(fsource, fullJavaSourcePath);
             return new SourceValue(projectSource, Environment.GetString("java.sourceDirectory") + "/" + packageName.Replace('.', '/') + Path.GetFileName(fsource.UnixPath));
         }
 
-        string GetJavaPackageName(string path)
+        string GetJavaPackageName(ForeignItem fsource, string path)
         {
             // this is super dumb, will make more robust soon
             using (var sr = new StreamReader(path))
@@ -94,7 +94,7 @@ namespace Uno.Compiler.Foreign
                 while(!sr.EndOfStream)
                 {
                     var line = sr.ReadLine().Trim();
-                    if (line.Length > 8 && line.Substring(0,8) == "package ")
+                    if (line.Length > 8 && line.Substring(0,8) == "package " && fsource.SourceKind == ForeignItem.Kind.Java)
                     {
                         if (line[line.Length - 1] != ';')
                             throw new Exception("Foreign Code Error: Malformed java package line. Missing semicolon");

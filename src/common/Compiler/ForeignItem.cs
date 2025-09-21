@@ -4,7 +4,7 @@ namespace Uno.Compiler
 {
     public class ForeignItem
     {
-        public enum Kind { Unknown, Java, CSource, CHeader, ObjCSource, ObjCHeader, Swift };
+        public enum Kind { Unknown, Java, Kotlin, CSource, CHeader, ObjCSource, ObjCHeader, Swift };
         public readonly string UnixPath;
         public readonly Kind SourceKind;
         public readonly string Condition;
