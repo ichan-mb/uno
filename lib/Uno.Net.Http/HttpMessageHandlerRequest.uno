@@ -18,6 +18,7 @@ namespace Uno.Net.Http
         HttpResponseType _responseType;
 
         byte[] _optionalPayloadCache = null;
+        Action<byte[], bool> _streamingDataCallback = null;
 
         internal HttpMessageHandlerRequest(HttpMessageHandler handler, string method, string url, IDispatcher dispatcher)
         {
@@ -131,6 +132,7 @@ namespace Uno.Net.Http
         public event Action<HttpMessageHandlerRequest> Done;
         public event Action<HttpMessageHandlerRequest> StateChanged;
         public event Action<HttpMessageHandlerRequest, int, int, bool> Progress;
+        public event Action<HttpMessageHandlerRequest, byte[], bool> StreamingData;
 
         class DispatchClosure
         {
@@ -258,6 +260,20 @@ namespace Uno.Net.Http
                 _dispatcher.Invoke(new ProgressClosure(HttpRequestState.Loading, handler, this, current, total, hasTotal).Run);
         }
 
+        internal void OnStreamingData(byte[] data, bool isComplete)
+        {
+            Action<HttpMessageHandlerRequest, byte[], bool> handler = StreamingData;
+            if (handler != null)
+            {
+                _dispatcher.Invoke(() => {
+                    if (!IsComplete())
+                    {
+                        handler(this, data, isComplete);
+                    }
+                });
+            }
+        }
+
         public void EnableCache(bool enableCache)
         {
             CheckDisposed();
@@ -293,6 +309,17 @@ namespace Uno.Net.Http
             _httpRequest.SetTimeout(timeoutInMilliseconds);
         }
 
+        public void SetStreamingDataCallback(Action<byte[], bool> onDataReceived)
+        {
+            CheckDisposed();
+
+            if ((int)State >= (int)HttpRequestState.Loading)
+                throw new InvalidStateException();
+
+            _streamingDataCallback = onDataReceived;
+            _httpRequest.SetStreamingDataCallback(onDataReceived);
+        }
+
         public void SetResponseType(HttpResponseType responseType)
         {
             CheckDisposed();
@@ -301,9 +328,7 @@ namespace Uno.Net.Http
                 throw new InvalidStateException();
 
             _responseType = responseType;
-
-            if defined(ANDROID)
-                (_httpRequest as AndroidHttpRequest).SetResponseType(responseType);
+            _httpRequest.SetResponseType(responseType);
         }
 
         public void SendAsync(byte[] data)
@@ -439,6 +464,20 @@ namespace Uno.Net.Http
 
             return _httpRequest.GetResponseContentByteArray()
                 ?? new byte[0];
+        }
+
+        public void GetResponseStream(Action<byte[], bool> onDataReceived)
+        {
+            CheckDisposed();
+
+            if (HttpResponseType != HttpResponseType.Stream)
+                throw new InvalidResponseTypeException();
+
+            if ((int)State < (int)HttpRequestState.Loading
+                    || (int)State > (int)HttpRequestState.Done)
+                return;
+
+            SetStreamingDataCallback(onDataReceived);
         }
 
         static bool IsHeaderValid(string name, string value)

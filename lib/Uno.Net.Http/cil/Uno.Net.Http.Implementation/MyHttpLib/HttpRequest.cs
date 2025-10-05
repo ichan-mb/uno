@@ -5,6 +5,13 @@ using System.Net.Cache;
 
 namespace MyHttpLib
 {
+    public enum HttpResponseType
+    {
+        None = -1,
+        String,
+        ByteArray,
+        Stream
+    }
     public class HttpRequest
     {
         readonly HttpWebRequest _request;
@@ -19,6 +26,9 @@ namespace MyHttpLib
         public Action<Exception> OnExeptionCallback { private get; set; }
 
         public Action<HttpWebResponse> OnHeadersReceived { private get; set; }
+        public Action<byte[], bool> OnStreamingDataCallback { private get; set; }
+
+        private HttpResponseType _responseType = HttpResponseType.ByteArray;
 
         public HttpRequest(string url)
         {
@@ -29,13 +39,30 @@ namespace MyHttpLib
             _headers = new Dictionary<string, string>();
         }
 
+        public void SetResponseType(HttpResponseType responseType)
+        {
+            _responseType = responseType;
+        }
+
+        public void SetStreamingDataCallback(Action<byte[], bool> onDataReceived)
+        {
+            OnStreamingDataCallback = onDataReceived;
+        }
+
         public void Send(byte[] data)
         {
             _request.Method = Method;
             _request.ContentType = ContentType;
             AttachHeadersToRequest();
 
-            HttpHelper.Send(_request, data, OnHeadersReceived, OnDoneCallback, OnProgress, OnExeptionCallback);
+            if (_responseType == HttpResponseType.Stream && OnStreamingDataCallback != null)
+            {
+                HttpHelper.SendStreaming(_request, data, OnHeadersReceived, OnStreamingDataCallback, OnProgress, OnExeptionCallback);
+            }
+            else
+            {
+                HttpHelper.Send(_request, data, OnHeadersReceived, OnDoneCallback, OnProgress, OnExeptionCallback);
+            }
         }
 
         public void SetCacheEnabled(bool isCacheEnabled)

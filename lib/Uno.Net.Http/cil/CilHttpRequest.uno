@@ -12,6 +12,7 @@ namespace Uno.Net.Http.Implementation
         void OnDone();
         void OnHeadersReceived();
         void OnProgress(int current, int total, bool hasTotal);
+        void OnStreamingData(byte[] data, bool isComplete);
     }
 
     public class HttpMessageHandlerRequestCallbacks
@@ -54,6 +55,11 @@ namespace Uno.Net.Http.Implementation
         {
             _request.OnProgress(current, total, hasTotal);
         }
+
+        public void OnStreamingData(byte[] data, bool isComplete)
+        {
+            _request.OnStreamingData(data, isComplete);
+        }
     }
 
     [DotNetType]
@@ -92,5 +98,8 @@ namespace Uno.Net.Http.Implementation
         [TargetSpecificImplementation] public extern string GetResponseHeaders();
         [TargetSpecificImplementation] public extern string GetResponseContentString();
         [TargetSpecificImplementation] public extern byte[] GetResponseContentByteArray();
+
+        [TargetSpecificImplementation] public extern void SetResponseType(HttpResponseType responseType);
+        [TargetSpecificImplementation] public extern void SetStreamingDataCallback(Action<byte[], bool> onDataReceived);
     }
 }

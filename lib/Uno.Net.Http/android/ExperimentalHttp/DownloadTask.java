@@ -22,9 +22,14 @@ public class DownloadTask extends AsyncTask<Object, Void, Void> {
             stringResult = new StringBuilder();
 
             while ((nRead = stream.read(data, 0, data.length)) != -1) {
-                if (request._responseType == HttpRequest.HttpResponseTypeByteArray) {
-                    request.OnDataReceived(data, nRead);
+                if (request._responseType == HttpRequest.HttpResponseTypeByteArray ||
+                    request._responseType == HttpRequest.HttpResponseTypeStream) {
+                    // For ByteArray and Stream types, send data chunks immediately
+                    byte[] chunk = new byte[nRead];
+                    System.arraycopy(data, 0, chunk, 0, nRead);
+                    request.OnDataReceived(chunk, nRead);
                 } else {
+                    // For String type, accumulate in StringBuilder
                     stringResult.append(new String(data,0,nRead));
                 }
                 runningTotal+=nRead;
@@ -42,9 +47,12 @@ public class DownloadTask extends AsyncTask<Object, Void, Void> {
     @Override
     protected void onPostExecute(Void ignore)
     {
-        if (request._responseType == HttpRequest.HttpResponseTypeByteArray) {
+        if (request._responseType == HttpRequest.HttpResponseTypeByteArray ||
+            request._responseType == HttpRequest.HttpResponseTypeStream) {
+            // Signal completion for ByteArray and Stream types
             request.OnDataReceived(null, -1);
         } else {
+            // Cache string result for String type
             request.CacheResponseString(stringResult.toString());
         }
         request.DownloadDone();

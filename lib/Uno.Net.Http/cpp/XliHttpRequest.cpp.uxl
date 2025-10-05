@@ -49,6 +49,19 @@
                 return uString::Utf8(result.Ptr());
             </body>
         </method>
+
+        <method signature="SetResponseType(Uno.Net.Http.HttpResponseType):void">
+            <body>
+                @{$$._requestHandle}->SetResponseType((int)$0);
+            </body>
+        </method>
+
+        <method signature="SetStreamingDataCallback(Uno.Action<byte[],bool>):void">
+            <body>
+                // Store the callback for use in event handler
+                @{$$._requestHandle}->SetStreamingCallback($0);
+            </body>
+        </method>
     </type>
 
 </extensions>

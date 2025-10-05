@@ -23,5 +23,9 @@ namespace Uno.Net.Http.Implementation
         string GetResponseHeaders();
         string GetResponseContentString();
         byte[] GetResponseContentByteArray();
+
+        // Streaming support
+        void SetResponseType(HttpResponseType responseType);
+        void SetStreamingDataCallback(Action<byte[], bool> onDataReceived);
     }
 }

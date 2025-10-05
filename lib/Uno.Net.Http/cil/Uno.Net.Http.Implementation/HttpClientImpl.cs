@@ -48,6 +48,18 @@ namespace Uno.Net.Http.Implementation
         string GetResponseHeaders();
         string GetResponseContentString();
         byte[] GetResponseContentByteArray();
+
+        // Streaming support
+        void SetResponseType(HttpResponseType responseType);
+        void SetStreamingDataCallback(Action<byte[], bool> onDataReceived);
+    }
+
+    public enum HttpResponseType
+    {
+        None = -1,
+        String,
+        ByteArray,
+        Stream
     }
 
     public interface IHttpMessageHandlerRequestCallbacks
@@ -58,6 +70,7 @@ namespace Uno.Net.Http.Implementation
         void OnDone();
         void OnHeadersReceived();
         void OnProgress(int current, int total, bool hasTotal);
+        void OnStreamingData(byte[] data, bool isComplete);
     }
 
     public class CilHttpRequest : IHttpRequest
@@ -74,6 +87,7 @@ namespace Uno.Net.Http.Implementation
 
         HttpResponse Response;
         byte[] Content;
+        HttpResponseType ResponseType = HttpResponseType.ByteArray;
 
         CilHttpRequest(
             IHttpMessageHandlerRequestCallbacks requestCallbacks,
@@ -106,6 +120,12 @@ namespace Uno.Net.Http.Implementation
                 x => CilHttpMessageHandler.AddEvent(() =>
                 {
                     RequestCallbacks.OnError(x.Message);
+                });
+
+            Request.OnStreamingDataCallback =
+                (data, isComplete) => CilHttpMessageHandler.AddEvent(() =>
+                {
+                    RequestCallbacks.OnStreamingData(data, isComplete);
                 });
         }
 
@@ -178,6 +198,17 @@ namespace Uno.Net.Http.Implementation
         public byte[] GetResponseContentByteArray()
         {
             return Content ?? new byte[0];
+        }
+
+        public void SetResponseType(HttpResponseType responseType)
+        {
+            ResponseType = responseType;
+            Request.SetResponseType(responseType);
+        }
+
+        public void SetStreamingDataCallback(Action<byte[], bool> onDataReceived)
+        {
+            Request.SetStreamingDataCallback(onDataReceived);
         }
     }
 }

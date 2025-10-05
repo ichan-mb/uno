@@ -87,5 +87,15 @@ namespace Uno.Net.Http.Implementation
             return extern<byte[]>(_requestHandle)
                 "$0->GetResponseContentByteArray()";
         }
+
+        public void SetResponseType(HttpResponseType responseType)
+        {
+            extern(_requestHandle, responseType) "$0->SetResponseType($1)";
+        }
+
+        public void SetStreamingDataCallback(Action<byte[], bool> onDataReceived)
+        {
+            extern(_requestHandle, onDataReceived) "$0->SetStreamingDataCallback($1)";
+        }
     }
 }

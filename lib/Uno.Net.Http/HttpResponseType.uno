@@ -4,6 +4,7 @@ namespace Uno.Net.Http
     {
         None = -1,
         String,
-        ByteArray
+        ByteArray,
+        Stream
     }
 }

@@ -14,6 +14,7 @@ namespace Uno.Net.Http.Implementation
         List<byte[]> _responseData;
         byte[] _result;
         int _responseLength;
+        Action<byte[], bool> _streamingDataCallback;
 
         internal AndroidHttpRequest(HttpMessageHandlerRequest request, string method, string url)
         :base (JNI.GetWrappedActivityObject(),
@@ -43,9 +44,31 @@ namespace Uno.Net.Http.Implementation
             SetHeader(jName, jValue);
         }
 
-        internal void SetResponseType(HttpResponseType responseType)
+
+
+        public void SetResponseType(HttpResponseType responseType)
         {
             SetResponseType((int)responseType);
+        }
+
+        public void SetStreamingDataCallback(Action<byte[], bool> onDataReceived)
+        {
+            _streamingDataCallback = onDataReceived;
+        }
+
+        public void SetTimeout(int timeoutInMilliseconds)
+        {
+            SetTimeout(timeoutInMilliseconds);
+        }
+
+        public void SendAsync()
+        {
+            base.SendAsync();
+        }
+
+        public void Abort()
+        {
+            base.Abort();
         }
 
         public void SendAsync(byte[] data)
@@ -109,18 +132,39 @@ namespace Uno.Net.Http.Implementation
         public override void OnDataReceived(IJWrapper arg0, int arg1)
         {
             if (arg1 == -1) {
-                if (_responseLength==0) return;
+                // Download complete
+                if (_streamingDataCallback != null)
+                {
+                    // Signal completion with empty array for streaming
+                    _streamingDataCallback(new byte[0], true);
+                }
+                else
+                {
+                    // Traditional buffered approach
+                    if (_responseLength==0) return;
 
-                _result = new byte[_responseLength];
-                int pos = 0;
-                foreach (var chunk in _responseData) {
-                    var chunkLength = chunk.Length;
-                    Array.Copy(chunk, 0, _result, pos, chunkLength);
-                    pos += chunkLength;
+                    _result = new byte[_responseLength];
+                    int pos = 0;
+                    foreach (var chunk in _responseData) {
+                        var chunkLength = chunk.Length;
+                        Array.Copy(chunk, 0, _result, pos, chunkLength);
+                        pos += chunkLength;
+                    }
                 }
             } else {
-                // still downloading
-                _responseData.Add(Android.Base.Types.Arrays.JavaToUnoByteArray(arg0._GetJavaObject(), arg1));
+                // Still downloading - handle streaming vs buffered
+                var dataChunk = Android.Base.Types.Arrays.JavaToUnoByteArray(arg0._GetJavaObject(), arg1);
+
+                if (_streamingDataCallback != null)
+                {
+                    // Streaming mode - call callback immediately
+                    _streamingDataCallback(dataChunk, false);
+                }
+                else
+                {
+                    // Buffered mode - accumulate data
+                    _responseData.Add(dataChunk);
+                }
                 _responseLength+=(int)arg1;
             }
         }

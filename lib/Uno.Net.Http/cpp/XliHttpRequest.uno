@@ -114,5 +114,17 @@ namespace Uno.Net.Http.Implementation
             extern(_requestHandle) "uBase::DataAccessor* body = $0->GetResponseBody()";
             return extern<byte[]>(typeof(byte)) "uArray::New($0->Array(), (int)body->GetSizeInBytes(), body->GetPtr())";
         }
+
+        public void SetResponseType(HttpResponseType responseType)
+        {
+            extern(_requestHandle, responseType)
+                "$0->SetResponseType((int)$1)";
+        }
+
+        public void SetStreamingDataCallback(Action<byte[], bool> onDataReceived)
+        {
+            extern(_requestHandle, onDataReceived)
+                "$0->SetStreamingDataCallback($1)";
+        }
     }
 }

@@ -127,5 +127,67 @@ namespace MyHttpLib
 
             }, TaskContinuationOptions.OnlyOnFaulted);
         }
+
+        public static void SendStreaming(HttpWebRequest request,
+                                        byte[] buffer,
+                                        Action<HttpWebResponse> onHeadersReceived,
+                                        Action<byte[], bool> onStreamingData,
+                                        Action<int, int> onProgress,
+                                        Action<Exception> exceptionCallback)
+        {
+            Send(request, buffer).Then(httpWebResponse =>
+            {
+                if (httpWebResponse == null)
+                    throw new ArgumentNullException("httpWebResponse");
+
+                onHeadersReceived(httpWebResponse);
+                httpWebResponse.ReadHttpResponseStreamingAsync(onStreamingData, onProgress);
+            }).ContinueWith(task =>
+            {
+                if (!task.IsFaulted || task.Exception == null) return;
+
+                foreach (var exception in task.Exception.Flatten().InnerExceptions)
+                    exceptionCallback(exception);
+
+            }, TaskContinuationOptions.OnlyOnFaulted);
+        }
+
+        static Task ReadHttpResponseStreamingAsync(this HttpWebResponse response, Action<byte[], bool> onStreamingData, Action<int, int> onProgress)
+        {
+            return Task.Run(async () =>
+            {
+                using (var responseStream = response.GetResponseStream())
+                {
+                    int read = 0;
+                    int totalRead = 0;
+                    var responseBuffer = new byte[4096];
+
+                    if (responseStream != null)
+                    {
+                        do
+                        {
+                            read = await responseStream.ReadAsync(responseBuffer, 0, responseBuffer.Length);
+                            if (read > 0)
+                            {
+                                totalRead += read;
+
+                                // Create a properly sized array for the data chunk
+                                var dataChunk = new byte[read];
+                                Array.Copy(responseBuffer, 0, dataChunk, 0, read);
+
+                                // Report progress
+                                onProgress(totalRead, (int)response.ContentLength);
+
+                                // Send the data chunk (not complete yet)
+                                onStreamingData(dataChunk, false);
+                            }
+                        } while (read > 0);
+
+                        // Signal completion with empty array
+                        onStreamingData(new byte[0], true);
+                    }
+                }
+            });
+        }
     }
 }

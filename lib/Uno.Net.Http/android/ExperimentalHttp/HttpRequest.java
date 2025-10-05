@@ -22,6 +22,7 @@ public abstract class HttpRequest {
     public static final int HttpResponseTypeNone = -1;
     public static final int HttpResponseTypeString = 0;
     public static final int HttpResponseTypeByteArray = 1;
+    public static final int HttpResponseTypeStream = 2;
 
     Activity _activity;
     String _url;
