@@ -56,6 +56,7 @@ namespace Uno.ProjectFormat
             {"ios.bundleVersion", PropertyType.String, "$(version)"},
             {"ios.bundleShortVersionString", PropertyType.String, "$(version)"},
             {"ios.statusBarHidden", PropertyType.Bool, "!$(mobile.showStatusbar)"},
+            {"ios.requiresFullScreen", PropertyType.Bool, "true"},
             {"ios.statusBarStyle", PropertyType.String, "Default"},
             {"ios.defines", PropertyType.String},
             {"ios.deploymentTarget", PropertyType.String, "13.0"},

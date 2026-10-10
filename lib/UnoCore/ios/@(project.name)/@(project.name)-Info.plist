@@ -59,7 +59,7 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UIRequiresFullScreen</key>
-	<true/>
+	<@(project.ios.requiresFullScreen:bool)/>
 	<key>UIRequiredDeviceCapabilities</key>
 	<array>
 		<string>armv7</string>
