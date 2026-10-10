@@ -3,6 +3,7 @@
 #if defined(__IPHONE_13_0) && __IPHONE_OS_VERSION_MAX_ALLOWED >= __IPHONE_13_0
 
 #include <Uno-iOS/Context.h>
+#include <Uno-iOS/uWindowHost.h>
 
 // Quick-action callbacks are injected into uAppDelegate by packages that
 // handle shortcuts (see Fuse.Shortcut's appDelegate.sourceFile.implementationScope
@@ -22,19 +23,13 @@
     if (![scene isKindOfClass:[UIWindowScene class]])
         return;
 
-    // The uno window is created by uAppDelegate before any scene exists; attach
-    // it to the UIWindowScene UIKit created for us. This is required on iOS 13+
-    // when UIApplicationSceneManifest is present, and mandatory for apps linked
-    // against the iOS 26 SDK and newer.
-    UIWindow* window = [[uContext sharedContext] window];
-    if (window != nil)
-    {
-        if (@available(iOS 13.0, *))
-        {
-            window.windowScene = (UIWindowScene*)scene;
-            [window makeKeyAndVisible];
-        }
-    }
+    // The window host associates this session with the primary window and
+    // attaches it to the UIWindowScene UIKit created for us (required on
+    // iOS 13+ when UIApplicationSceneManifest is present, and mandatory for
+    // apps linked against the iOS 26 SDK and newer). A later phase will
+    // create a dedicated window per session here.
+    UIWindow* window = [uWindowHost sharedHost].primaryWindow;
+    [[uWindowHost sharedHost] attachWindow:window toSession:session scene:scene];
 
     // With the scene life cycle enabled UIKit no longer delivers launch items
     // to the app delegate; forward them here instead.
@@ -90,8 +85,10 @@
 
 - (void)sceneDidDisconnect:(UIScene *)scene
 {
+    // The session is only disconnected after its state has been saved, and may
+    // be reconnected later; drop the association but keep the primary window.
+    [[uWindowHost sharedHost] detachSession:scene.session];
 }
-
 - (void)sceneDidBecomeActive:(UIScene *)scene
 {
 }

@@ -1,5 +1,6 @@
 #include <Uno-iOS/AppDelegate.h>
 #include <Uno-iOS/Context.h>
+#include <Uno-iOS/uWindowHost.h>
 #include <Window.h>
 
 // The scene delegate class must be declared at file scope; declaring it inside
@@ -22,9 +23,11 @@
 {
     if ((self = [super init]))
     {
-        CGRect screenBounds = [UIScreen mainScreen].bounds;
-        uWindow* window = [[uWindow alloc] initWithFrame:screenBounds];
-        _unoContext = [uContext initSharedContextWithWindow:^UIWindow* () { return window; }];
+        // The primary window is created lazily by the window host on first
+        // use (groundwork for multiple windows); the runtime first touches it
+        // in willFinishLaunching when wrapping the main display, so nothing
+        // depends on it existing during app delegate initialization.
+        _unoContext = [uContext initSharedContextWithWindow:^UIWindow* () { return [uWindowHost sharedHost].primaryWindow; }];
         _context = [_unoContext glContext];
     }
     return self;
@@ -93,6 +96,8 @@
 
 - (void)application:(UIApplication *)application didDiscardSceneSessions:(NSSet<UISceneSession *> *)discardedSceneSessions
 {
+    for (UISceneSession* session in discardedSceneSessions)
+        [[uWindowHost sharedHost] detachSession:session];
 }
 #endif
 

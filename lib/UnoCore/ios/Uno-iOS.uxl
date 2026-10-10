@@ -4,6 +4,8 @@
     <processFile sourceFile="Uno-iOS/AppDelegate.mm" />
     <processFile headerFile="Uno-iOS/SceneDelegate.h" />
     <processFile sourceFile="Uno-iOS/SceneDelegate.mm" />
+    <processFile headerFile="Uno-iOS/uWindowHost.h" />
+    <processFile sourceFile="Uno-iOS/uWindowHost.mm" />
     <processFile headerFile="Uno-iOS/Context.h" />
     <copyFile sourceFile="Uno-iOS/Main.mm" />
     <processFile headerFile="Uno-iOS/Uno-iOS.h" />
