@@ -9,6 +9,8 @@
     <!-- Build properties -->
 
     <declare element="ios.backgroundModes" />
+    <declare element="ios.requiresFullScreen" />
+    <declare element="ios.supportsMultipleScenes" />
     <declare element="xcode.embeddedFramework" />
     <declare element="xcode.framework" />
     <declare element="xcode.frameworkDirectory" />

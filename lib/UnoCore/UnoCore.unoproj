@@ -133,6 +133,8 @@
     "ios/Uno-iOS/AppDelegate.mm:file",
     "ios/Uno-iOS/SceneDelegate.h:file",
     "ios/Uno-iOS/SceneDelegate.mm:file",
+    "ios/Uno-iOS/uWindowHost.h:file",
+    "ios/Uno-iOS/uWindowHost.mm:objcsource:iOS",
     "ios/Uno-iOS/Context.h:file",
     "ios/Uno-iOS/Context.mm:objcsource:iOS",
     "ios/Uno-iOS/Main.mm:file",

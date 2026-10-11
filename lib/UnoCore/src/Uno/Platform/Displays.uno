@@ -11,6 +11,36 @@ namespace Uno.Platform
         public static List<Display> All { public get; private set; }
         public static Display MainDisplay { get { return GetMainDisplay(); } }
 
+        		static EventHandler<Display> _secondaryDisplayAdded;
+        		public static event EventHandler<Display> SecondaryDisplayAdded
+        		{
+        			add { _secondaryDisplayAdded += value; }
+        			remove { _secondaryDisplayAdded -= value; }
+        		}
+
+        		static internal void OnSecondaryDisplayAdded(Display display)
+        		{
+        			var handler = _secondaryDisplayAdded;
+        			if (handler != null)
+        				handler(null, display);
+        		}
+
+        		static EventHandler<object> _secondaryDisplayDiscarded;
+        		/** Raised when a scene session that owned a window is discarded (for
+        			example the user closed the window). The argument is the UIWindow. */
+        		public static event EventHandler<object> SecondaryDisplayDiscarded
+        		{
+        			add { _secondaryDisplayDiscarded += value; }
+        			remove { _secondaryDisplayDiscarded -= value; }
+        		}
+
+        		static internal void OnSecondaryDisplayDiscarded(object displayWindow)
+        		{
+        			var handler = _secondaryDisplayDiscarded;
+        			if (handler != null)
+        				handler(null, displayWindow);
+        		}
+
         static Displays()
         {
             All = new List<Display>();

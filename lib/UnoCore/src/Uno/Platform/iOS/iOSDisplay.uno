@@ -89,11 +89,47 @@ namespace Uno.Platform
             return @{iOSDisplay(ObjC.Object):new(window)};
         @}
 
+        // Wraps an additional UIWindow (one granted by the window host to a
+        // scene session when multiple scenes are enabled) in its own
+        // iOSDisplay and registers it in Uno.Platform.Displays. Called from
+        // the window host the first time a session is granted its own window.
+        [Foreign(Language.ObjC)]
+        static Display _createForWindow(ObjC.Object windowHandle)
+        @{
+            UIWindow* window = (UIWindow*)windowHandle;
+            return @{iOSDisplay(ObjC.Object):new(window)};
+        @}
+
+        		static internal iOSDisplay WrapSecondaryDisplay(ObjC.Object windowHandle)
+        		{
+        			var display = (iOSDisplay)_createForWindow(windowHandle);
+        			Displays.All.Add(display);
+        			Displays.OnSecondaryDisplayAdded(display);
+        			return display;
+        		}
+
+        		// Called by the window host when a scene session's window is discarded
+        		// (for example the user closed the window).
+        		static internal void NotifyWindowDiscarded(ObjC.Object window)
+        		{
+        			Displays.OnSecondaryDisplayDiscarded(window);
+        		}
+
+        // The UIWindow this display wraps (null for desktop displays).
+        public ObjC.Object Window
+        {
+            get { return _handle; }
+        }
+
         [Foreign(Language.ObjC)]
         static double GetDensityOfScreenFromWindow(ObjC.Object window)
         @{
             UIWindow* _window = (UIWindow*)window;
+            // A window that is not attached to a scene yet has no screen; its
+            // density would read as 0 and produce invalid layout geometry.
             UIScreen* screen = _window.screen;
+            if (screen == nil)
+                screen = [UIScreen mainScreen];
             return @{GetDensityOfScreen(ObjC.Object):call(screen)};
         @}
 
@@ -154,7 +190,13 @@ namespace Uno.Platform
             {
                 uDisplayTickNotifier *notifier = [[uDisplayTickNotifier alloc] init];
 
-                displayLink = [window.screen displayLinkWithTarget:notifier selector:@selector(uOnDisplayTick:) ];
+                // A window granted a scene later than ticks start has no screen
+                // yet; fall back to the main screen so the app's runloop ticks.
+                UIScreen* tickScreen = window.screen;
+                if (tickScreen == nil)
+                    tickScreen = [UIScreen mainScreen];
+
+                displayLink = [tickScreen displayLinkWithTarget:notifier selector:@selector(uOnDisplayTick:) ];
 
                 [displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
                 [displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:UITrackingRunLoopMode];
