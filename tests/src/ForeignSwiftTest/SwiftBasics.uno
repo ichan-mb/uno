@@ -16,7 +16,7 @@ public extern(FOREIGN_SWIFT_SUPPORTED) class SwiftBasics
         Assert.AreEqual(3, Add(1, 2));
         Assert.AreEqual("hello world", Greet("world"));
         Assert.AreEqual(7.5, Half(15));
-        Assert.IsFalse(Negate(false));
+        Assert.IsTrue(Negate(false));
         Assert.AreEqual(42, StaticFieldRoundTrip());
         Assert.AreEqual(3, ArrayLength(new int[] { 1, 2, 3 }));
         Assert.AreEqual("hello from a swift file", FromFile());
