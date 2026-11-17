@@ -21,7 +21,11 @@ namespace Uno.Compiler.Foreign.ObjC
         {
         }
 
-        protected override string Language => "ObjC";
+        protected override bool MatchesLanguage(string language) => language == ForeignLanguageName;
+
+        // The name used by the ForeignInclude/ForeignAnnotation attributes that belong to
+        // this pass.
+        protected virtual string ForeignLanguageName => "ObjC";
 
         bool _initialized;
         DataType _objCObject;
@@ -30,7 +34,7 @@ namespace Uno.Compiler.Foreign.ObjC
         Method _getHandle;
         Method _newObjCObject;
 
-        void EnsureInitialized(Source source, Function f)
+        protected void EnsureInitialized(Source source, Function f)
         {
             Helpers.CacheContext(f, source);
             if (!_initialized)
@@ -44,7 +48,11 @@ namespace Uno.Compiler.Foreign.ObjC
             }
         }
 
-        protected override void OnForeignFunction(Function f, List<string> annotations)
+        protected DataType ObjCObjectType => _objCObject;
+        protected DataType ObjCIDType => _objCID;
+        protected DataType IntPtrType => _intPtr;
+
+        protected override void OnForeignFunction(Function f, List<string> annotations, string language)
         {
             EnsureInitialized(f.Source, f);
 
@@ -67,12 +75,22 @@ namespace Uno.Compiler.Foreign.ObjC
         }
 
         int _unique;
-        string UniqueName(string suggested)
+        protected string UniqueName(string suggested)
         {
             return suggested + "__" + _unique++;
         }
 
-        public string Preprocess(Source source, string str, Function context = null, params Namescope[] usings)
+        // Overrides allow other passes (for instance Swift) to reuse the Uno <-> Objective-C
+        // conversion layer while emitting a different method body.
+
+        // If true, the foreign body is never inlined directly, but always wrapped in a lambda
+        // that performs the type conversions.
+        protected virtual bool AlwaysWrapBody => false;
+
+        // When non-null, this string replaces the user supplied foreign body.
+        protected virtual string GetForeignBodyOverride(Function f, string[] foreignParamNames) => null;
+
+        public virtual string Preprocess(Source source, string str, Function context = null, params Namescope[] usings)
         {
             EnsureInitialized(source, context);
             return Environment.Expand(
@@ -91,7 +109,7 @@ namespace Uno.Compiler.Foreign.ObjC
                 usings);
         }
 
-        string ExpandType(Source source, string expansionResult, object context, Macros.MacroCall call)
+        protected virtual string ExpandType(Source source, string expansionResult, object context, Macros.MacroCall call)
         {
             if (context is DataType && call.Method == null)
                 return GetConversion(source, (DataType)context).ForeignType;
@@ -99,13 +117,15 @@ namespace Uno.Compiler.Foreign.ObjC
                 return expansionResult;
         }
 
-        string WrapBody(Function f, string body)
+        protected string WrapBody(Function f, string body)
         {
+            var usesThis = !f.IsStatic && body.Contains("_this");
+
             var paramConversions = new List<ParamTypeConversion>();
             var paramNames = new List<string>();
             var foreignParamNames = new List<string>();
 
-            if (!f.IsStatic && body.Contains("_this"))
+            if (usesThis)
             {
                 paramConversions.Add(
                     GetParamConversion(
@@ -124,6 +144,10 @@ namespace Uno.Compiler.Foreign.ObjC
             paramNames.AddRange(f.Parameters.Select((x, i) => "@IL$" + i));
             foreignParamNames.AddRange(f.Parameters.Select(x => x.UnoName));
 
+            var bodyOverride = GetForeignBodyOverride(f, foreignParamNames.ToArray());
+            if (bodyOverride != null)
+                body = bodyOverride;
+
             var returnConversion = GetConversion(f.Source, f.ReturnType);
 
             var convertedArguments = paramConversions.Select((p, i) => p.FromUno(paramNames[i])).ToList();
@@ -131,7 +155,8 @@ namespace Uno.Compiler.Foreign.ObjC
             var arguments = convertedArguments.Select(x => x.Expression).ToList();
             var postStatements = convertedArguments.SelectMany(x => x.PostStatements).ToList();
 
-            if (paramConversions.All(x => x.IsIdentity) &&
+            if (!AlwaysWrapBody &&
+                paramConversions.All(x => x.IsIdentity) &&
                 returnConversion.IsIdentity &&
                 preStatements.Count == 0 &&
                 postStatements.Count == 0 &&
@@ -163,7 +188,7 @@ namespace Uno.Compiler.Foreign.ObjC
             }
         }
 
-        string ReturnWithPrePostStatements(DataType returnType, List<string> preStatements, string expression, List<string> postStatements)
+        protected string ReturnWithPrePostStatements(DataType returnType, List<string> preStatements, string expression, List<string> postStatements)
         {
             using (var tw = new StringWriter())
             {
@@ -195,17 +220,17 @@ namespace Uno.Compiler.Foreign.ObjC
             return "(" + string.Join(", ", conversions.Select((x, i) => x.ForeignType + " " + parameters[i])) + ")";
         }
 
-        string ForeignTypes(IEnumerable<ParamTypeConversion> conversions)
+        protected string ForeignTypes(IEnumerable<ParamTypeConversion> conversions)
         {
             return string.Join(", ", conversions.Select(x => x.ForeignType));
         }
 
-        string MakeReturnStatement(DataType dt, string x)
+        protected string MakeReturnStatement(DataType dt, string x)
         {
             return (dt.IsVoid ? x : "return " + x) + ";";
         }
 
-        ParamTypeConversion GetParamConversion(Parameter p)
+        protected ParamTypeConversion GetParamConversion(Parameter p)
         {
             var tc = GetConversion(p.Source, p.Type);
             if (p.IsReference)
@@ -255,7 +280,7 @@ namespace Uno.Compiler.Foreign.ObjC
             }
         }
 
-        TypeConversion GetConversion(Source src, DataType dt)
+        protected virtual TypeConversion GetConversion(Source src, DataType dt)
         {
             if (dt == _objCID || dt.IsVoid)
             {
@@ -479,12 +504,12 @@ namespace Uno.Compiler.Foreign.ObjC
                 toUno);
         }
 
-        string WithForeignPool(TypeConversion tc, string x)
+        protected string WithForeignPool(TypeConversion tc, string x)
         {
             return "[&]() -> " + tc.ForeignType + " { ::uForeignPool __foreignPool; " + x + " }()";
         }
 
-        string WithObjCAutoreleasePool(string x)
+        protected string WithObjCAutoreleasePool(string x)
         {
             using (var tw = new StringWriter())
             {
@@ -500,12 +525,12 @@ namespace Uno.Compiler.Foreign.ObjC
         }
 
         HashSet<DataType> visitedTypes = new HashSet<DataType>();
-        void HandleForeignImports(DataType dt)
+        protected void HandleForeignImports(DataType dt)
         {
             if (!visitedTypes.Contains(dt))
             {
                 visitedTypes.Add(dt);
-                var includes = Helpers.GetForeignIncludes(dt, "ObjC");
+                var includes = Helpers.GetForeignIncludes(dt, ForeignLanguageName);
                 if (includes.Count > 0)
                     Helpers.SourceInclude(includes, dt);
             }

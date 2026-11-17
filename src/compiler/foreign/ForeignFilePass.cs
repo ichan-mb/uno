@@ -76,35 +76,107 @@ namespace Uno.Compiler.Foreign
 
         SourceValue? GetRequiredDestination(ForeignItem fsource, Source projectSource)
         {
-            if (fsource.SourceKind != ForeignItem.Kind.Java)
+            var isJava = fsource.SourceKind == ForeignItem.Kind.Java;
+            var isKotlin = fsource.SourceKind == ForeignItem.Kind.Kotlin;
+
+            if (!isJava && !isKotlin)
                 return null;
 
-            var fullJavaSourcePath = fsource.UnixPath.UnixToNative()
+            var sourceDirectory = Environment.GetString("java.sourceDirectory");
+            if (string.IsNullOrEmpty(sourceDirectory))
+                return null;
+
+            var fullSourcePath = fsource.UnixPath.UnixToNative()
                     .ToFullPath(projectSource.Bundle.SourceDirectory);
-            var packageName = GetJavaPackageName(fullJavaSourcePath);
-            return new SourceValue(projectSource, Environment.GetString("java.sourceDirectory") + "/" + packageName.Replace('.', '/') + Path.GetFileName(fsource.UnixPath));
+            var packageName = GetPackageName(fullSourcePath, fsource.SourceKind);
+            return new SourceValue(projectSource, sourceDirectory + "/" + packageName.Replace('.', '/') + Path.GetFileName(fsource.UnixPath));
         }
 
-        string GetJavaPackageName(string path)
+        // Extracts the package declared at the top of a Java or Kotlin source file. Both use
+        // a `package` directive, but only Java terminates it with a semicolon. The directory
+        // the file is copied to must match the package for Java; Kotlin only needs the file
+        // to end up somewhere the Kotlin compiler looks.
+        static string GetPackageName(string path, ForeignItem.Kind kind)
         {
-            // this is super dumb, will make more robust soon
-            using (var sr = new StreamReader(path))
+            using (var reader = new StreamReader(path))
             {
-                var package = "";
-                while(!sr.EndOfStream)
-                {
-                    var line = sr.ReadLine().Trim();
-                    if (line.Length > 8 && line.Substring(0,8) == "package ")
-                    {
-                        if (line[line.Length - 1] != ';')
-                            throw new Exception("Foreign Code Error: Malformed java package line. Missing semicolon");
-                        package = line.Substring(8, line.Length-9) + ".";
-                        break;
-                    }
-                }
+                var inBlockComment = false;
 
-                return package;
+                while (!reader.EndOfStream)
+                {
+                    var line = reader.ReadLine().Trim();
+
+                    if (inBlockComment)
+                    {
+                        var end = line.IndexOf("*/", StringComparison.Ordinal);
+
+                        if (end < 0)
+                            continue;
+
+                        inBlockComment = false;
+                        line = line.Substring(end + 2).Trim();
+                    }
+
+                    if (line.Length == 0 || line.StartsWith("//", StringComparison.Ordinal))
+                        continue;
+
+                    if (line.StartsWith("/*", StringComparison.Ordinal))
+                    {
+                        var end = line.IndexOf("*/", 2, StringComparison.Ordinal);
+
+                        if (end < 0)
+                        {
+                            inBlockComment = true;
+                            continue;
+                        }
+
+                        line = line.Substring(end + 2).Trim();
+
+                        if (line.Length == 0)
+                            continue;
+                    }
+
+                    if (!IsPackageDirective(line, out var name))
+                        continue;
+
+                    // Drop a trailing line comment.
+                    var comment = name.IndexOf("//", StringComparison.Ordinal);
+
+                    if (comment >= 0)
+                        name = name.Substring(0, comment).Trim();
+
+                    if (kind == ForeignItem.Kind.Java)
+                    {
+                        if (name.Length == 0 || name[name.Length - 1] != ';')
+                            throw new Exception("Foreign Code Error: Malformed java package line. Missing semicolon");
+
+                        name = name.Substring(0, name.Length - 1).Trim();
+                    }
+                    else if (name.EndsWith(";", StringComparison.Ordinal))
+                    {
+                        name = name.Substring(0, name.Length - 1).Trim();
+                    }
+
+                    return name + ".";
+                }
             }
+
+            return "";
+        }
+
+        static bool IsPackageDirective(string line, out string name)
+        {
+            name = null;
+
+            const string keyword = "package";
+
+            if (line.Length <= keyword.Length ||
+                !line.StartsWith(keyword, StringComparison.Ordinal) ||
+                !char.IsWhiteSpace(line[keyword.Length]))
+                return false;
+
+            name = line.Substring(keyword.Length).Trim();
+            return true;
         }
     }
 }

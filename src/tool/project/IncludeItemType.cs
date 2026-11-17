@@ -17,6 +17,7 @@ namespace Uno.ProjectFormat
         ObjCHeader = 12,
         Swift = 13,
         FuseJS = 14,
+        Kotlin = 15,
 
         // Deprecated
         StuffFile = 103,

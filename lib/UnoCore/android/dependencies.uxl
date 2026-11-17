@@ -12,6 +12,7 @@
 
     <!-- Kotlin support. -->
     <require condition="KOTLIN" gradle.dependency.implementation="androidx.core:core-ktx:1.10.1" />
-    <require condition="KOTLIN" gradle.dependency.classPath="org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.25" />
+    <require condition="KOTLIN" gradle.dependency.implementation="org.jetbrains.kotlin:kotlin-stdlib:@(kotlin.version)" />
+    <require condition="KOTLIN" gradle.dependency.classPath="org.jetbrains.kotlin:kotlin-gradle-plugin:@(kotlin.version)" />
 
 </extensions>

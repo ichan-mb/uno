@@ -51,6 +51,7 @@ namespace Uno.ProjectFormat
             {"android.sdk.compileVersion", PropertyType.Integer},
             {"android.sdk.minVersion", PropertyType.Integer},
             {"android.sdk.targetVersion", PropertyType.Integer},
+            {"android.kotlinVersion", PropertyType.String},
             {"ios.bundleIdentifier", PropertyType.String},
             {"ios.bundleName", PropertyType.String, "$(title)"},
             {"ios.bundleVersion", PropertyType.String, "$(version)"},

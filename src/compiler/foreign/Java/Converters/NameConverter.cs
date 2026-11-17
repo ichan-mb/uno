@@ -107,6 +107,27 @@ namespace Uno.Compiler.Foreign.Java.Converters
                 }
                 return "com.foreign." + name;
             }
+
+            // Kotlin methods cannot live in the same generated type as Java methods (one
+            // would be a .java file, the other a .kt file, but naming the same class). The
+            // Kotlin body type is therefore suffixed, and its nested types are mirrored as
+            // nested objects.
+            public string ComForeignKotlinClassName(DataType dt)
+            {
+                if (dt.IsNestedType)
+                    return ComForeignKotlinClassName(dt.ParentType) + "." + dt.Name + "Kotlin";
+
+                return "com.foreign." + dt.Name + "Kotlin";
+            }
+
+            public string KotlinObjectName(DataType dt) => dt.Name + "Kotlin";
+
+            public string ComForeignClassName(DataType dt, JvmDialect dialect)
+            {
+                return dialect.IsKotlin()
+                    ? ComForeignKotlinClassName(dt)
+                    : ComForeignClassName(dt);
+            }
         }
     }
 }

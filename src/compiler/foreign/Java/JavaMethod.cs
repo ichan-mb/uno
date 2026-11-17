@@ -15,18 +15,24 @@ namespace Uno.Compiler.Foreign.Java
             readonly ForeignHelpers _helpers;
             readonly Converters.Converter _convert;
             readonly IEnvironment _environment;
+            readonly JvmDialect _dialect;
             readonly string _argsWithTypes;
             readonly string _argsNoTypes;
+            readonly string _kotlinArgsWithTypes;
 
-            public JavaMethod(ForeignMethod fm, ForeignHelpers helpers, Converters.Converter convert, ExpandInterceptor expandInterceptor, IEnvironment env)
+            public JavaMethod(ForeignMethod fm, ForeignHelpers helpers, Converters.Converter convert, ExpandInterceptor expandInterceptor, IEnvironment env, JvmDialect dialect)
             {
                 _convert = convert;
                 _helpers = helpers;
                 _environment = env;
                 _foreignMethod = fm;
+                _dialect = dialect;
                 _argsWithTypes = JavaMethodArgs(fm.InitialUnoMethod);
                 _argsNoTypes = JavaMethodArgs(fm.InitialUnoMethod, false);
-                Source = GenJavaMethod(fm.InitialUnoMethod, fm.JavaName, expandInterceptor);
+                _kotlinArgsWithTypes = KotlinMethodArgs(fm.InitialUnoMethod);
+                Source = dialect.IsKotlin()
+                    ? GenKotlinMethod(fm.InitialUnoMethod, fm.JavaName, expandInterceptor)
+                    : GenJavaMethod(fm.InitialUnoMethod, fm.JavaName, expandInterceptor);
             }
 
             string GenJavaMethod(Function f, string javaMethodName, ExpandInterceptor expandInterceptor)
@@ -48,6 +54,45 @@ namespace Uno.Compiler.Foreign.Java
                         return tw.ToString();
                     }
                 }
+            }
+
+            string GenKotlinMethod(Function f, string javaMethodName, ExpandInterceptor expandInterceptor)
+            {
+                using (var tw = new StringWriter())
+                {
+                    using (var ftw = new TextFormatter(tw))
+                    {
+                        foreach (var annotation in _foreignMethod.Annotations)
+                        {
+                            ftw.WriteLine("@" + annotation);
+                        }
+
+                        ftw.WriteLine("@JvmStatic");
+                        ftw.Indent("fun " + KotlinIdentifiers.Escape(javaMethodName) + "(" + _kotlinArgsWithTypes + ")" + KotlinReturnSuffix(f.ReturnType) + " {");
+                        ftw.WriteLines(_environment.Expand(f.Source, expandInterceptor, _helpers.GetForeignCodeFromFunction(f), false, f, _helpers.GetExternFunctionScopes(f)));
+                        ftw.Unindent("}");
+                        return tw.ToString();
+                    }
+                }
+            }
+
+            string KotlinReturnSuffix(DataType returnType)
+            {
+                return _convert.Type.IsVoid(returnType)
+                    ? ""
+                    : ": " + _convert.Type.UnoToKotlinType(returnType, true);
+            }
+
+            string KotlinMethodArgs(IParametersEntity f)
+            {
+                var args = string.Join(", ", f.Parameters.Select(_convert.Param.UnoToKotlinParameter));
+                if (!f.IsStatic)
+                {
+                    args = f.Parameters.Length > 0
+                        ? "_this: UnoObject?, " + args
+                        : "_this: UnoObject?";
+                }
+                return args;
             }
 
             string JavaMethodArgs(IParametersEntity f, bool types = true)

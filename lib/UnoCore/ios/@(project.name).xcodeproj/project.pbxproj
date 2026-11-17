@@ -519,6 +519,12 @@
 				PRODUCT_BUNDLE_IDENTIFIER = @(bundleIdentifier);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = @(project.ios.swiftVersion || "5.0");
+#if @(pbxproj.swiftBridgingHeader:isSet)
+				SWIFT_OBJC_BRIDGING_HEADER = "@(pbxproj.swiftBridgingHeader)";
+#endif
+#if @(pbxproj.moduleName:isSet)
+				PRODUCT_MODULE_NAME = "@(pbxproj.moduleName)";
+#endif
 			};
 			name = Debug;
 		};
@@ -568,6 +574,12 @@
 				PRODUCT_BUNDLE_IDENTIFIER = @(bundleIdentifier);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = @(project.ios.swiftVersion || "5.0");
+#if @(pbxproj.swiftBridgingHeader:isSet)
+				SWIFT_OBJC_BRIDGING_HEADER = "@(pbxproj.swiftBridgingHeader)";
+#endif
+#if @(pbxproj.moduleName:isSet)
+				PRODUCT_MODULE_NAME = "@(pbxproj.moduleName)";
+#endif
 #if @(LIBRARY:defined)
 				WRAPPER_EXTENSION = framework;
 #else

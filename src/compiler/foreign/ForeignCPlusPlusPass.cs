@@ -62,7 +62,7 @@ namespace Uno.Compiler.Foreign
         {
         }
 
-        protected override string Language => "CPlusPlus";
+        protected override bool MatchesLanguage(string language) => language == "CPlusPlus";
         bool _initialized;
 
         void EnsureInitialized()
@@ -86,7 +86,7 @@ namespace Uno.Compiler.Foreign
             }
         }
 
-        protected override void OnForeignFunction(Function f, List<string> annotations)
+        protected override void OnForeignFunction(Function f, List<string> annotations, string language)
         {
             EnsureInitialized();
 

@@ -38,6 +38,7 @@ Unreleased
 
 ### Android
 - Make `arm64` default for debug builds (#475)
+- Add `android.kotlinVersion` project property for overriding the Kotlin version
 - Upgrade to Gradle 8.2 and JDK17 (#516, #518)
 - Upgrade SDKs (target 34), Gradle plugin and Kotlin (#525)
 
@@ -53,6 +54,17 @@ Unreleased
 - Remove `xamarin-mac` dependency (#479)
 - Use `xcode-devteams` for information (#511)
 - Fix native library loading on .NET 6.0 (#513)
+
+### Foreign code
+- Add `[Foreign(Language.Kotlin)]` for Android
+    - Kotlin bodies are emitted as `object` types with `@JvmStatic` methods and reuse the existing JNI plumbing
+    - The Kotlin Gradle plugin and standard library are enabled automatically when Kotlin foreign code is used
+- Add `[Foreign(Language.Swift)]` for iOS
+    - Swift bodies are emitted as `@objc` classes that are called from the generated Objective-C++ code
+    - UXL macros inside Swift bodies are routed through generated Objective-C bridge methods
+    - A Swift bridging header with the generated bridge types is set up automatically
+- Add `kotlin` file type for `.kt` files in `unoproj` includes
+- Report an error when foreign code is written in a language that is not available for the target
 
 ### Compiler
 - Remove `GRADLE` and `UNO_TEST` defines (#455)

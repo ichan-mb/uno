@@ -19,13 +19,15 @@ namespace Uno.Compiler.Foreign
         public override bool Begin(Function f)
         {
             var langString = Helpers.GetForeignAttribute(f);
-            if (langString != null && Language == langString)
-                OnForeignFunction(f, Helpers.GetForeignAnnotations(f, langString));
+            if (langString != null && MatchesLanguage(langString))
+                OnForeignFunction(f, Helpers.GetForeignAnnotations(f, langString), langString);
             return false;
         }
 
-        protected abstract string Language { get; }
+        // A pass may handle more than one foreign language (for instance the JVM pass
+        // handles both Java and Kotlin).
+        protected abstract bool MatchesLanguage(string language);
 
-        protected abstract void OnForeignFunction(Function f, List<string> annotations);
+        protected abstract void OnForeignFunction(Function f, List<string> annotations, string language);
     }
 }

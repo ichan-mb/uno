@@ -17,15 +17,20 @@ namespace Uno.Compiler.Foreign.Java
         public readonly Converters.Converter Convert;
         public readonly ForeignHelpers Helpers;
 
+        // The foreign language this method was declared with. Java and Kotlin share the
+        // same JNI plumbing, but are emitted as different source languages.
+        public readonly string Language;
+
         public string JniSignature => Convert.Signature.GetJniSignature(InitialUnoMethod);
         public bool IsStatic => InitialUnoMethod.IsStatic;
         public DataType UnoReturnType => InitialUnoMethod.ReturnType;
 
-        public ForeignMethod(Function f, IEssentials essentials, Converters.Converter convert, ForeignHelpers helpers, List<string> annotations)
+        public ForeignMethod(Function f, IEssentials essentials, Converters.Converter convert, ForeignHelpers helpers, List<string> annotations, string language)
         {
             _essentials = essentials;
             Convert = convert;
             Helpers = helpers;
+            Language = language;
             CppHeadersForDeclaringType = new List<string> {
                     "jni.h",
                     "uDroid/JNIHelper.h",
@@ -42,18 +47,24 @@ namespace Uno.Compiler.Foreign.Java
         void ValidateMethod(ParametersMember f, IEssentials essentials)
         {
             if (f.Parameters.Any(x => x.Type.IsGenericType))
-                throw new Exception("Foreign Code Limitation: The compiler cannot currently convert generics arguments to a Java types.\nFound in: " + f.FullName);
+                throw new Exception("Foreign Code Limitation: The compiler cannot currently convert generics arguments to a " + Language + " type.\nFound in: " + f.FullName);
             if (f.ReturnType.IsGenericType)
                 throw new Exception("Foreign Code Limitation: The compiler cannot currently handle generics return types.\nFound in: " + f.FullName);
+
+            // Java has no out/ref parameters, and the JNI bridge has no way to write the
+            // value back. Reject them instead of silently passing them by value.
+            if (f.Parameters.Any(x => x.IsReference))
+                throw new Exception("Foreign Code Limitation: " + Language + " foreign code does not support " +
+                    "out/ref parameters. Return the value instead, or write it to a Uno field or property.\nFound in: " + f.FullName);
 
             foreach (var p in f.Parameters)
             {
                 if ((p.Type.IsEnum ? p.Type.Base : p.Type) == _essentials.Byte)
-                    throw new Exception("Foreign Code Limitation: Method '" + f.FullName + "' has an argument '" + p.UnoName + "' of type byte. Java does not support byte. It does however support sbyte.");
+                    throw new Exception("Foreign Code Limitation: Method '" + f.FullName + "' has an argument '" + p.UnoName + "' of type byte. " + Language + " does not support byte. It does however support sbyte.");
             }
 
             if ((f.ReturnType.IsEnum ? f.ReturnType.Base : f.ReturnType) == _essentials.Byte)
-                throw new Exception("Foreign Code Limitation: Method '" + f.FullName + "' has a return type of byte. Java does not support byte. It does however support sbyte.");
+                throw new Exception("Foreign Code Limitation: Method '" + f.FullName + "' has a return type of byte. " + Language + " does not support byte. It does however support sbyte.");
         }
 
 
@@ -77,4 +88,3 @@ namespace Uno.Compiler.Foreign.Java
         }
     }
 }
-

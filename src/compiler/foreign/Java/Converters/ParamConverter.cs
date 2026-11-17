@@ -17,6 +17,12 @@ namespace Uno.Compiler.Foreign.Java.Converters
             {
                 return "final " + _convert.Type.UnoToJavaType(p.Type, false) + " " + p.UnoName;
             }
+
+            public string UnoToKotlinParameter(Parameter p)
+            {
+                return KotlinIdentifiers.Escape(p.UnoName) + ": " +
+                    _convert.Type.UnoToKotlinType(p.Type, _convert.Type.IsKotlinNullable(p.Type));
+            }
         }
     }
 }

@@ -1,7 +1,4 @@
 {
-  "ios": {
-    "swiftVersion": 3
-  },
   "references": [
     "Uno.Testing"
   ],

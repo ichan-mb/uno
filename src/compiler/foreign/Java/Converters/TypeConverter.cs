@@ -180,6 +180,63 @@ namespace Uno.Compiler.Foreign.Java.Converters
                 return result;
             }
 
+            static readonly Dictionary<string, string> _kotlinTypes = new Dictionary<string, string>
+            {
+                { "void", "Unit" },
+                { "float", "Float" },
+                { "double", "Double" },
+                { "long", "Long" },
+                { "short", "Short" },
+                { "char", "Char" },
+                { "int", "Int" },
+                { "sbyte", "Byte" },
+                { "bool", "Boolean" },
+            };
+
+            // True for types that map to a Kotlin primitive (or Unit), and therefore can not
+            // be null.
+            public bool IsKotlinPrimitive(DataType dt)
+            {
+                return dt.IsEnum || _kotlinTypes.ContainsKey(dt.FullName);
+            }
+
+            // Returns the Kotlin type used when exposing an Uno type to Kotlin code.
+            //
+            // Reference types are nullable by default, because Uno reference types can be
+            // null, and Kotlin inserts null checks on non-null parameters. Pass
+            // nullableReferences: false when the type is used where Kotlin already guarantees
+            // non-nullness (for instance in a type macro).
+            public string UnoToKotlinType(DataType dt, bool nullableReferences = false)
+            {
+                if (dt.IsEnum)
+                    return UnoToKotlinType(dt.Base, false);
+
+                string result;
+                if (_kotlinTypes.TryGetValue(dt.FullName, out result))
+                    return result;
+
+                if (!_javaTypes.TryGetValue(dt.FullName, out result))
+                {
+                    if (dt.IsSubclassOfOrEqual(_essentials.Delegate))
+                        result = _convert.Name.JavaDelegateName((DelegateType)dt, true);
+                    else if (dt == _boxedJavaObject)
+                        result = "Any";
+                    else
+                        result = "UnoObject";
+                }
+                else if (result == "Object")
+                {
+                    result = "Any";
+                }
+
+                return nullableReferences ? result + "?" : result;
+            }
+
+            public bool IsKotlinNullable(DataType dt)
+            {
+                return !dt.IsVoid && !IsKotlinPrimitive(dt);
+            }
+
             public string CastJniToUno(DataType unoType, string line, bool stackArg)
             {
                 var unbox = stackArg ? "Unbox" : "UnboxFreeingLocalRef";

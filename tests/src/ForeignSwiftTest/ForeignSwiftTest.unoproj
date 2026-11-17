@@ -1,0 +1,11 @@
+{
+  "rootNamespace": "",
+  "references": [
+    "Uno.Testing",
+    "UnoCore"
+  ],
+  "includes": [
+    "*.uno",
+    "Hello.swift:swift:iOS"
+  ]
+}

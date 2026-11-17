@@ -10,13 +10,13 @@ namespace Uno.Compiler.Foreign.Java
     {
         bool _initialized;
         readonly Dictionary<DataType, JavaClass> TopLevelJavaClasses = new Dictionary<DataType, JavaClass>();
+        readonly Dictionary<DataType, JavaClass> TopLevelKotlinClasses = new Dictionary<DataType, JavaClass>();
         internal static DataType BoxedJavaObject;
         internal static DataType UnoToJavaBoxingClass;
-        ExpandInterceptor ExpandInterceptor;
         Entrypoints BlockHost;
         public Converters.Converter Convert;
 
-        protected override string Language => "Java";
+        protected override bool MatchesLanguage(string language) => language == "Java" || language == "Kotlin";
 
         public ForeignJavaPass(CppBackend backend) : base(backend) {}
 
@@ -24,7 +24,6 @@ namespace Uno.Compiler.Foreign.Java
         {
             if (!_initialized)
             {
-                ExpandInterceptor = new ExpandInterceptor(InterceptEntity);
                 BoxedJavaObject = ILFactory.GetType("Java.Object");
                 _initialized = true;
                 Convert = new Converters.Converter(BoxedJavaObject, Essentials, ILFactory, Helpers);
@@ -33,18 +32,26 @@ namespace Uno.Compiler.Foreign.Java
             }
         }
 
-        protected override void OnForeignFunction(Function f, List<string> annotations)
+        protected override void OnForeignFunction(Function f, List<string> annotations, string language)
         {
             // Setup
             EnsureInitialized();
             Helpers.CacheContext(null, f.Source);
 
-            var fm = new ForeignMethod(f, Essentials, Convert, Helpers, annotations);
+            var dialect = language == "Kotlin" ? JvmDialect.Kotlin : JvmDialect.Java;
+
+            var fm = new ForeignMethod(f, Essentials, Convert, Helpers, annotations, language);
             GenDelegatePlumbing(f);
 
-            // Generate new java code
-            var jcls = GetJavaClass(f.DeclaringType, Environment);
-            jcls.AddForeignMethod(fm, ExpandInterceptor);
+            // The dialect is captured by the interceptor instead of being stored on the
+            // pass, so a macro expansion can never pick up the language of a previously
+            // processed function.
+            var interceptor = new ExpandInterceptor(
+                (m, e, c, mc) => InterceptEntity(dialect, m, e, c, mc));
+
+            // Generate new java/kotlin code
+            var jcls = GetTargetClass(f.DeclaringType, Environment, dialect);
+            jcls.AddForeignMethod(fm, interceptor);
 
             // replace the extern body string with the jni calls
             Helpers.ReplaceBody(f, fm.GetCallFromUno());
@@ -56,16 +63,33 @@ namespace Uno.Compiler.Foreign.Java
         public override void End()
         {
             EnsureInitialized();
+            EnableKotlinBuild();
             BlockHost.WriteJava();
             WriteJavaClasses();
             WriteDelegateTypeJavaFiles();
             BlockHost.WriteCpp(Helpers);
         }
 
+        // Kotlin support is opted in automatically as soon as a method is declared with
+        // [Foreign(Language.Kotlin)]. This wires up the Kotlin Gradle plugin and the
+        // standard library, and flags the build scripts to enable Kotlin compilation.
+        void EnableKotlinBuild()
+        {
+            if (TopLevelKotlinClasses.Count == 0)
+                return;
+
+            Environment.Require("kotlin.enabled", "true");
+            Environment.Require("gradle.dependency.classPath", "org.jetbrains.kotlin:kotlin-gradle-plugin:@(kotlin.version)");
+            Environment.Require("gradle.dependency.implementation", "org.jetbrains.kotlin:kotlin-stdlib:@(kotlin.version)");
+        }
+
         void WriteJavaClasses()
         {
             foreach (var jcls in TopLevelJavaClasses.Values)
                 jcls.WriteJavaClass(Disk);
+
+            foreach (var kcls in TopLevelKotlinClasses.Values)
+                kcls.WriteJavaClass(Disk);
         }
 
         void WriteDelegateTypeJavaFiles()
@@ -78,31 +102,41 @@ namespace Uno.Compiler.Foreign.Java
             }
         }
 
-        // java classes
-        JavaClass GetJavaClass(DataType dt, IEnvironment env)
+        // Returns the dialect the given Uno function was declared with. Only valid for
+        // functions that have a [Foreign] attribute for one of the JVM languages.
+        internal JvmDialect GetFunctionDialect(Function f)
         {
-            if (!TopLevelJavaClasses.ContainsKey(dt))
+            var langString = Helpers.GetForeignAttribute(f);
+            return langString == "Kotlin" ? JvmDialect.Kotlin : JvmDialect.Java;
+        }
+
+        // java classes
+        JavaClass GetTargetClass(DataType dt, IEnvironment env, JvmDialect dialect)
+        {
+            var classes = dialect.IsKotlin() ? TopLevelKotlinClasses : TopLevelJavaClasses;
+
+            if (!classes.ContainsKey(dt))
             {
                 if (dt.IsNestedType)
                 {
-                    var parent = GetJavaClass(dt.ParentType, env);
+                    var parent = GetTargetClass(dt.ParentType, env, dialect);
                     if (parent.StaticNestedClasses.ContainsKey(dt))
                     {
                         return parent.StaticNestedClasses[dt];
                     }
                     else
                     {
-                        var newNested = new JavaClass(dt, Helpers, Convert, BlockHost, env);
+                        var newNested = new JavaClass(dt, Helpers, Convert, BlockHost, env, dialect);
                         parent.StaticNestedClasses[dt] = newNested;
                         return newNested;
                     }
                 }
                 else
                 {
-                    TopLevelJavaClasses[dt] = new JavaClass(dt, Helpers, Convert, BlockHost, env);
+                    classes[dt] = new JavaClass(dt, Helpers, Convert, BlockHost, env, dialect);
                 }
             }
-            return TopLevelJavaClasses[dt];
+            return classes[dt];
         }
     }
 }

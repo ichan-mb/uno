@@ -5,6 +5,10 @@
     <define APPLE />
     <define MOBILE />
     <define UNIX />
+    <define FOREIGN_SWIFT_SUPPORTED />
+
+    <!-- Support header for Swift foreign code, shared by the generated bridge headers. -->
+    <copyFile condition="FOREIGN_SWIFT_SUPPORTED" headerFile="uSwift.h" />
 
     <!-- Build properties -->
 

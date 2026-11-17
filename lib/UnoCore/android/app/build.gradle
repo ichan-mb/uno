@@ -1,5 +1,5 @@
 apply plugin: 'com.android.@(LIBRARY:defined:test('library', 'application'))'
-#if @(KOTLIN:defined)
+#if @(kotlin.enabled:isRequired) || @(KOTLIN:defined)
 apply plugin: 'kotlin-android'
 #endif
 
@@ -150,7 +150,7 @@ android {
         checkReleaseBuilds = false
     }
 
-#if @(KOTLIN:defined)
+#if @(kotlin.enabled:isRequired) || @(KOTLIN:defined)
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8

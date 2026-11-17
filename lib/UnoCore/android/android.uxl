@@ -26,6 +26,10 @@
     <set sdk.minVersion="@(project.android.sdk.minVersion || config.android.sdk.minVersion || '21')" />
     <set sdk.targetVersion="@(project.android.sdk.targetVersion || config.android.sdk.targetVersion || '34')" />
 
+    <!-- Kotlin version used when [Foreign(Language.Kotlin)] is present, or when the
+         KOTLIN define is set. -->
+    <set kotlin.version="@(project.android.kotlinVersion || config.android.kotlinVersion || '1.9.25')" />
+
     <!-- Build properties -->
 
     <declare element="activity.class.declaration" />
@@ -128,6 +132,9 @@
     <set java.libsDirectory="@(java.projectDirectory)/main/libs" />
     <set java.sourceDirectory="@(java.projectDirectory)/main/java" />
     <set java.packageDirectory="@(java.sourceDirectory)/@(activity.package:replace('.', '/'))" />
+
+    <!-- Set by the compiler when [Foreign(Language.Kotlin)] is used. -->
+    <declare element="kotlin.enabled" />
 
     <declare element="javaFile" targetDirectory="@(java.sourceDirectory)" />
 
