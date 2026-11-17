@@ -6,7 +6,7 @@
     <require gradle.buildScript.repository="mavenCentral()" />
     <require gradle.repository="maven { url 'https://maven.google.com' }" />
 
-    <require gradle.dependency.classPath="com.android.tools.build:gradle:8.1.4" />
+    <require gradle.dependency.classPath="com.android.tools.build:gradle:8.9.3" />
     <require gradle.dependency.implementation="androidx.appcompat:appcompat:1.4.2" />
     <require gradle.dependency.implementation="com.google.android.material:material:1.6.1" />
 

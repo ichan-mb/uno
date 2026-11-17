@@ -39,6 +39,10 @@ Unreleased
 ### Android
 - Make `arm64` default for debug builds (#475)
 - Add `android.kotlinVersion` project property for overriding the Kotlin version
+- Upgrade to Gradle 8.14 and Android Gradle plugin 8.9
+- Upgrade Kotlin to 2.2
+- Compile against and target Android SDK 36
+- Require Android platform 21 in the native build (`ndk.platformVersion`) and CMake 3.22
 - Upgrade to Gradle 8.2 and JDK17 (#516, #518)
 - Upgrade SDKs (target 34), Gradle plugin and Kotlin (#525)
 
