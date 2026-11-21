@@ -38,8 +38,11 @@ Unreleased
 
 ### Android
 - Make `arm64` default for debug builds (#475)
+- Make `arm64` the default for release builds as well; add `armeabi-v7a` to `Android.Architectures.Release` for 32-bit devices
 - Upgrade to Gradle 8.2 and JDK17 (#516, #518)
 - Upgrade SDKs (target 34), Gradle plugin and Kotlin (#525)
+- Export only the JNI entry point from native libraries, which removes the dynamic symbol tables (`Android.ExportAllSymbols` opts out)
+- Add `Android.Minify` and `Android.ShrinkResources` project properties for enabling R8 in release builds
 
 ### iOS
 - ~~Make iOS 11 the default deployment target (#476)~~

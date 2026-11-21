@@ -54,6 +54,9 @@ namespace Uno.Compiler.Core.Syntax.Builders
             {
                 foreach (var file in bundle.BundleFiles)
                 {
+                    if (!_env.Test(bundle.Source, file.Condition))
+                        continue;
+
                     var filename = file.UnixPath;
                     if (_compiler.Disk.GetFullPath(bundle.Source, bundle.SourceDirectory, ref filename))
                         CreateFile(bundle.Source, filename);

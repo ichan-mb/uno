@@ -9,6 +9,14 @@ add_definitions(@(preprocessorDefinition:join(' ', '-D')))
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=@(cStandard)")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=@(cppStandard) -Wno-unused-value -Wno-dangling-else -Wno-switch -Wno-invalid-offsetof -fexceptions -frtti")
 
+# Export only the JNI entry point; the rest is resolved at link time. Set
+# Android.ExportAllSymbols to export everything again.
+#if !@(project.android.exportAllSymbols:isSet:test(@(project.android.exportAllSymbols:bool),false))
+set(exportsMap "${CMAKE_CURRENT_BINARY_DIR}/exports.map")
+file(WRITE "${exportsMap}" "{ global: JNI_OnLoad; Java_*; local: *; };\n")
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--version-script=${exportsMap}")
+#endif
+
 # Strip release builds to reduce file size.
 if (CMAKE_BUILD_TYPE STREQUAL "Release")
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -s")
