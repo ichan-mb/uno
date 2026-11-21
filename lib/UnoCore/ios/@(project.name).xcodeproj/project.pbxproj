@@ -432,7 +432,8 @@
 #if !@(LIBRARY:defined)
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 #endif
-				COPY_PHASE_STRIP = NO;
+				COPY_PHASE_STRIP = YES;
+				DEPLOYMENT_POSTPROCESSING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;

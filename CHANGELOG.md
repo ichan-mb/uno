@@ -38,6 +38,7 @@ Unreleased
 
 ### Android
 - Make `arm64` default for debug builds (#475)
+- Make `arm64` the default for release builds as well; add `armeabi-v7a` to `Android.Architectures.Release` for 32-bit devices
 - Upgrade to Gradle 9.9, Android Gradle plugin 9.5 and JDK 17 (#516, #518)
 - Compile Kotlin sources with the built-in Kotlin support of AGP 9, instead of applying `kotlin-android` and pinning a Kotlin version
 - Compile against and target Android SDK 36 (#525)
@@ -45,6 +46,8 @@ Unreleased
 - Point the generated Android Studio project at a JDK 17 or later, instead of the hardcoded 1.8
 - Upgrade the default NDK to 30, which aligns native libraries to 16 KB memory pages
 - Use the shared C++ standard library (`STL=c++_shared`)
+- Export only the JNI entry point from native libraries, which removes the dynamic symbol tables (`Android.ExportAllSymbols` opts out)
+- Add `Android.Minify` and `Android.ShrinkResources` project properties for enabling R8 in release builds
 - Draw the app edge-to-edge, as Android 15 and later require, instead of insetting the window by the system bars
 - Require Android platform 21 in the native build (`ndk.platformVersion`) and CMake 3.22
 

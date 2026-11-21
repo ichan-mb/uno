@@ -134,7 +134,8 @@ android {
 #elif @(project.android.key.store:isSet)
             signingConfig = signingConfigs.release
 #endif
-            minifyEnabled = false
+            minifyEnabled @(project.android.minify:isSet:test(@(project.android.minify:bool),false))
+            shrinkResources @(project.android.shrinkResources:isSet:test(@(project.android.shrinkResources:bool),false))
             proguardFiles 'proguard-rules.pro'
         }
     }
