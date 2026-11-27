@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -153,6 +154,14 @@ namespace Uno.Build.Stuff
             return _retval;
         }
 
+        // Minimal Linux installs often lack unzip, and the zips we install (NuGet packages for
+        // Android) have no symlinks that need it. macOS keeps unzip, which preserves the
+        // symlinks in iOS/macOS frameworks.
+        internal static bool UseZipFile(bool isLinux, bool hasUnzip)
+        {
+            return isLinux || !hasUnzip;
+        }
+
         void InstallItem(KeyValuePair<string, object> item)
         {
             var itemKey = item.Key.Replace('/', Path.DirectorySeparatorChar);
@@ -198,6 +207,8 @@ namespace Uno.Build.Stuff
                             // (ZipFile doesn't handle this)
                             if (Path.GetFileName(file).ToUpper().EndsWith(".TAR.GZ", ".TGZ"))
                                 Shell.Untar(Log, file, targetDir);
+                            else if (UseZipFile(OperatingSystem.IsLinux(), Shell.IsOnPath("unzip")))
+                                ZipFile.ExtractToDirectory(file, targetDir);
                             else
                                 Shell.Unzip(Log, file, targetDir);
 

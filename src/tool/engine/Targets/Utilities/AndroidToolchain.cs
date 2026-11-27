@@ -11,9 +11,10 @@ namespace Uno.Build.Targets.Utilities
 {
     /// <summary>
     /// Locates the Android SDK and a JDK when *.unoconfig* and the environment variables
-    /// checked in android.uxl have not configured them.
+    /// checked in android.uxl have not configured them. Public so that hosts running uno
+    /// in-process (fuse-preview) find the same SDK and JDK as the build.
     /// </summary>
-    static class AndroidToolchain
+    public static class AndroidToolchain
     {
         /// <summary>Oldest JDK supported by the Android Gradle Plugin used by the app template.</summary>
         const int MinJavaVersion = 17;
@@ -36,7 +37,7 @@ namespace Uno.Build.Targets.Utilities
                 }
             }
 
-            if (!HasEnvironmentVariable("JAVA_HOME"))
+            if (!HasUsableJavaHome())
             {
                 var jdk = FindJdk();
                 if (jdk != null)
@@ -45,6 +46,18 @@ namespace Uno.Build.Targets.Utilities
                     Trace("Java JDK: " + jdk);
                 }
             }
+        }
+
+        // A JAVA_HOME known to be older than the Android Gradle Plugin needs would fail the
+        // build, so a detected JDK is used instead. One of unknown version is trusted.
+        static bool HasUsableJavaHome()
+        {
+            var javaHome = Environment.GetEnvironmentVariable("JAVA_HOME");
+            if (string.IsNullOrEmpty(javaHome))
+                return false;
+
+            var version = GetJavaVersion(javaHome);
+            return version == 0 || version >= MinJavaVersion;
         }
 
         static void Trace(string message)
@@ -84,7 +97,11 @@ namespace Uno.Build.Targets.Utilities
             return null;
         }
 
-        static string FindSdk()
+        /// <summary>
+        /// The first valid SDK named by ANDROID_SDK, ANDROID_HOME or ANDROID_SDK_ROOT, else the
+        /// first valid SDK in the default location for this OS, else null.
+        /// </summary>
+        public static string FindSdk()
         {
             foreach (var key in SdkVariables)
             {
@@ -122,15 +139,34 @@ namespace Uno.Build.Targets.Utilities
                    Directory.Exists(Path.Combine(dir, "build-tools"));
         }
 
-        static string FindJdk()
+        /// <summary>
+        /// The first JDK of version 17 or newer among the usual install locations for this OS,
+        /// Android Studio's own first, else null. JAVA_HOME is not checked.
+        /// </summary>
+        public static string FindJdk()
         {
             // The first candidate that is recent enough wins, so Android Studio's own JDK is
-            // preferred over whatever else is installed.
+            // preferred over whatever else is installed. A JRE has a "release" file too, but
+            // Gradle cannot build with it.
             foreach (var dir in GetJdkCandidates())
-                if (GetJavaVersion(dir) >= MinJavaVersion)
+                if (GetJavaVersion(dir) >= MinJavaVersion && HasJavac(dir))
                     return dir;
 
             return null;
+        }
+
+        /// <summary>
+        /// The major Java version of the JDK in <paramref name="jdkDirectory"/>, read from its
+        /// "release" file, or 0 when it is unknown.
+        /// </summary>
+        public static int JavaVersion(string jdkDirectory)
+        {
+            return GetJavaVersion(jdkDirectory);
+        }
+
+        static bool HasJavac(string dir)
+        {
+            return File.Exists(Path.Combine(dir, "bin", OperatingSystem.IsWindows() ? "javac.exe" : "javac"));
         }
 
         static IEnumerable<string> GetJdkCandidates()
@@ -139,12 +175,14 @@ namespace Uno.Build.Targets.Utilities
             {
                 yield return "/Applications/Android Studio.app/Contents/jbr/Contents/Home";
 
-                foreach (var dir in EnumerateDirectories(
-                             Path.Combine(PlatformDetection.HomeDirectory, "Library", "Java", "JavaVirtualMachines")))
-                    yield return Path.Combine(dir, "Contents", "Home");
-
-                foreach (var dir in EnumerateDirectories("/Library/Java/JavaVirtualMachines"))
-                    yield return Path.Combine(dir, "Contents", "Home");
+                foreach (var root in new[]
+                         {
+                             Path.Combine(PlatformDetection.HomeDirectory, "Library", "Java", "JavaVirtualMachines"),
+                             "/Library/Java/JavaVirtualMachines"
+                         })
+                    foreach (var home in SortByVersion(
+                                 EnumerateDirectories(root).Select(dir => Path.Combine(dir, "Contents", "Home"))))
+                        yield return home;
             }
             else if (OperatingSystem.IsWindows())
             {
@@ -152,30 +190,47 @@ namespace Uno.Build.Targets.Utilities
                 var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
 
                 yield return Path.Combine(programFiles, "Android", "Android Studio", "jbr");
+                // Per-user installs, and the JetBrains Toolbox.
+                yield return Path.Combine(localAppData, "Android", "Android Studio", "jbr");
+                yield return Path.Combine(localAppData, "Programs", "Android Studio", "jbr");
 
                 foreach (var root in new[]
                          {
                              Path.Combine(programFiles, "Java"),
                              Path.Combine(programFiles, "Eclipse Adoptium"),
                              Path.Combine(programFiles, "Microsoft"),
-                             Path.Combine(localAppData, "Programs", "Eclipse Adoptium"),
-                             Path.Combine(localAppData, "Android", "Android Studio", "jbr")
+                             Path.Combine(localAppData, "Programs", "Eclipse Adoptium")
                          })
-                    foreach (var dir in EnumerateDirectories(root))
+                    foreach (var dir in SortByVersion(EnumerateDirectories(root)))
                         yield return dir;
             }
             else
             {
-                yield return Path.Combine(PlatformDetection.HomeDirectory, "android-studio", "jbr");
-                yield return "/opt/android-studio/jbr";
+                var home = PlatformDetection.HomeDirectory;
 
-                foreach (var dir in EnumerateDirectories("/usr/lib/jvm"))
+                yield return Path.Combine(home, "android-studio", "jbr");
+                yield return "/opt/android-studio/jbr";
+                yield return "/usr/local/android-studio/jbr";
+                yield return "/snap/android-studio/current/jbr";
+                yield return Path.Combine(home, ".local", "share", "JetBrains", "Toolbox", "apps", "android-studio", "jbr");
+
+                foreach (var dir in SortByVersion(EnumerateDirectories("/usr/lib/jvm")))
+                    yield return dir;
+
+                foreach (var dir in SortByVersion(EnumerateDirectories(Path.Combine(home, ".sdkman", "candidates", "java"))))
                     yield return dir;
             }
 
             // Installed by the JetBrains Toolbox / IDEA "Download JDK" feature on all platforms.
-            foreach (var dir in EnumerateDirectories(Path.Combine(PlatformDetection.HomeDirectory, ".jdks")))
+            foreach (var dir in SortByVersion(EnumerateDirectories(Path.Combine(PlatformDetection.HomeDirectory, ".jdks"))))
                 yield return dir;
+        }
+
+        // Directory listings come in no particular order on Linux, so without this the JDK
+        // picked from a folder holding several would change from machine to machine.
+        static IEnumerable<string> SortByVersion(IEnumerable<string> homes)
+        {
+            return homes.OrderByDescending(GetJavaVersion).ThenBy(home => home, StringComparer.Ordinal);
         }
 
         static IEnumerable<string> EnumerateDirectories(string dir)

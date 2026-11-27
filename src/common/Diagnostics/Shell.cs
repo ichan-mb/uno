@@ -262,7 +262,19 @@ namespace Uno.Diagnostics
 
                     _timerInited = true;
                     var proc = Process.GetCurrentProcess();
-                    var parents = proc.GetParents();
+                    List<Process> parents;
+
+                    // Monitoring is optional; a broken performance counter setup must not
+                    // prevent processes from starting.
+                    try
+                    {
+                        parents = proc.GetParents();
+                    }
+                    catch (Exception e)
+                    {
+                        Log.Default.Verbose("Failed to find parent processes: " + e.Message);
+                        return;
+                    }
 
                     foreach (var parent in parents)
                     {
@@ -276,7 +288,9 @@ namespace Uno.Diagnostics
                                     if (p.HasExited)
                                     {
                                         _timer.Stop();
-                                        proc.KillTree();
+                                        // KillTree() can't be used on the current process.
+                                        KillAll();
+                                        proc.Kill();
                                         return;
                                     }
                                 }

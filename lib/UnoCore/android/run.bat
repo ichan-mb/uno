@@ -8,7 +8,7 @@ if "%1" == "debug" (
     set JAVA_HOME=@(jdk.directory:nativePath)
 #endif
     echo Opening Android Studio
-    @(uno) open -a"Android Studio" -t"@(project.name)" "%~dp0"
+    call @(uno) open -a"Android Studio" -t"@(project.name)" "%~dp0"
     exit /b %ERRORLEVEL%
 )
 
@@ -18,11 +18,11 @@ exit /b 1
 #else
 if "%1" == "uninstall" (
     echo Uninstalling @(activity.package)
-    @(uno) adb uninstall @(activity.package)
+    call @(uno) adb uninstall @(activity.package)
     exit /b %ERRORLEVEL%
 )
 
-@(uno) launch-apk "%~dp0@(product)" ^
+call @(uno) launch-apk "%~dp0@(product)" ^
     --package=@(activity.package) ^
     --activity=@(activity.name) ^
     --sym-dir="%~dp0src\main\.uno" ^
