@@ -1,9 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Drawing;
-using System.Drawing.Drawing2D;
 using System.IO;
 using System.Linq;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats;
+using SixLabors.ImageSharp.Formats.Png;
+using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
 using Uno.Collections;
 using Uno.Compiler.API.Domain.Extensions;
 using Uno.Compiler.API.Domain.IL;
@@ -599,8 +602,16 @@ namespace Uno.Compiler.Core.Syntax
                 return;
 
             if (f.Flags.HasFlag(CopyFileFlags.ProcessFile))
+            {
+                var text = _env.Expand(new Source(f.SourceName.Source.Bundle, src, 1, 1), f.Preprocess(File.ReadAllText(src).Replace("\r\n", "\n")));
+
+                // cmd.exe can fail to find goto/call labels in batch files with LF line endings.
+                if (IsBatchFile(dst))
+                    text = text.Replace("\r\n", "\n").Replace("\n", "\r\n");
+
                 using (var w = _disk.CreateBufferedText(dst))
-                    w.Write(_env.Expand(new Source(f.SourceName.Source.Bundle, src, 1, 1), f.Preprocess(File.ReadAllText(src).Replace("\r\n", "\n"))));
+                    w.Write(text);
+            }
             else if (f.Flags.HasFlag(CopyFileFlags.IsDirectory))
                 _disk.CopyDirectory(src, dst);
             else
@@ -608,6 +619,13 @@ namespace Uno.Compiler.Core.Syntax
 
             if (f.Flags.HasFlag(CopyFileFlags.IsExecutable))
                 _disk.MakeExecutable(dst);
+        }
+
+        static bool IsBatchFile(string filename)
+        {
+            var ext = Path.GetExtension(filename);
+            return ext.Equals(".bat", StringComparison.OrdinalIgnoreCase) ||
+                   ext.Equals(".cmd", StringComparison.OrdinalIgnoreCase);
         }
 
         void WriteImageFile(ImageFile f)
@@ -632,66 +650,83 @@ namespace Uno.Compiler.Core.Syntax
                 Log.Event(IOEvent.Write, dst);
                 _disk.CreateDirectory(Path.GetDirectoryName(dst));
 
-                if (OperatingSystem.IsWindows())
+                // Hosts other than Windows never checked for transparency, so the warning
+                // stays Windows-only to keep their output unchanged.
+                if (OperatingSystem.IsWindows() && _env.IsDefined("IOS") && HasAlpha(src))
                 {
-                    // Use System.Drawing to convert images on Windows:
-
-                    using var originalImg = Image.FromFile(src);
-
-                    if (_env.IsDefined("IOS") && Image.IsAlphaPixelFormat(originalImg.PixelFormat))
-                    {
-                        var source = new Source(src);
-                        Log.Warning(source, ErrorCode.W0000, "iOS App Store doesn't accept Images with transparency.");
-                    }
-
-                    int width = f.TargetWidth ?? f.TargetHeight ?? originalImg.Width;
-                    int height = f.TargetHeight ?? f.TargetWidth ?? originalImg.Height;
-
-                    using var resizedImg = new Bitmap(width, height, originalImg.PixelFormat);
-                    using var graphics = Graphics.FromImage(resizedImg);
-
-                    graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
-                    graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
-                    graphics.DrawImage(originalImg, new Rectangle(0, 0, width, height));
-
-                    resizedImg.Save(dst);
+                    var source = new Source(src);
+                    Log.Warning(source, ErrorCode.W0000, "iOS App Store doesn't accept Images with transparency.");
                 }
-                else
+
+                if (f.TargetWidth == null && f.TargetHeight == null)
                 {
-                    // Alternative code path not using System.Drawing:
-
-                    int width = f.TargetWidth ?? f.TargetHeight ?? 0;
-                    int height = f.TargetHeight ?? f.TargetWidth ?? 0;
-
-                    if (width == 0 || height == 0)
-                    {
-                        // No resizing required; direct copy
-                        File.Copy(src, dst);
-                    }
-                    else if (OperatingSystem.IsMacOS())
-                    {
-                        // Use the 'sips' command on macOS:
-                        new Shell(Log).GetOutput("sips",
-                            "--resampleHeightWidth " + height + " " + width + " " +
-                            src.QuoteSpace() + " --out " + dst.QuoteSpace(),
-                            RunFlags.NoOutput);
-                    }
-                    else
-                    {
-                        // Use the 'convert' command as fallback:
-                        new Shell(Log).GetOutput("convert",
-                            src.QuoteSpace() +
-                            " -resize " + width + "x" + height + "! " +
-                            dst.QuoteSpace(),
-                            RunFlags.NoOutput);
-                    }
+                    File.Copy(src, dst, true);
+                    return;
                 }
+
+                using var image = Image.Load(src);
+                int width = f.TargetWidth ?? f.TargetHeight.Value;
+                int height = f.TargetHeight ?? f.TargetWidth.Value;
+
+                if (width != image.Width || height != image.Height)
+                    image.Mutate(x => x.Resize(width, height, KnownResamplers.Bicubic));
+
+                // Encoded in memory first so a failure can't leave a truncated file that
+                // looks up to date on the next build.
+                using var stream = new MemoryStream();
+                image.Save(stream, GetEncoder(dst, image));
+                File.WriteAllBytes(dst, stream.ToArray());
             }
             catch (Exception e)
             {
                 Log.Error(new Source(src), ErrorCode.E0000, e.Message);
                 Log.Error(f.SourceName.Source, ErrorCode.E0000, "Failed to convert " + src.Quote());
             }
+        }
+
+        // ImageSharp 2.x leaves PixelType.AlphaRepresentation unset, but decodes to a pixel
+        // type that follows the file, so that type tells whether there is an alpha channel.
+        static bool HasAlpha(string filename)
+        {
+            using var image = Image.Load(filename);
+            return image is Image<Rgba32> || image is Image<Rgba64> ||
+                   image is Image<Bgra32> || image is Image<Argb32> ||
+                   image is Image<La16> || image is Image<La32>;
+        }
+
+        // The format follows the target's extension, PNG when it has none we know.
+        static IImageEncoder GetEncoder(string filename, Image image)
+        {
+            var formats = SixLabors.ImageSharp.Configuration.Default.ImageFormatsManager;
+            var format = formats.FindFormatByFileExtension(Path.GetExtension(filename).TrimStart('.'));
+            var encoder = format != null ? formats.FindEncoder(format) : null;
+            if (encoder != null && !(encoder is PngEncoder))
+                return encoder;
+
+            // The PNG encoder keeps the source's color type, so a palette icon would be quantized
+            // and dithered again after resizing. Write truecolor, with alpha only when it is
+            // used, as sips did: the App Store rejects an icon with an alpha channel.
+            if (image.Metadata.GetPngMetadata().ColorType == PngColorType.Palette)
+                return new PngEncoder { ColorType = IsOpaque(image) ? PngColorType.Rgb : PngColorType.RgbWithAlpha };
+
+            return new PngEncoder();
+        }
+
+        static bool IsOpaque(Image image)
+        {
+            using var rgba = image.CloneAs<Rgba32>();
+            var opaque = true;
+            rgba.ProcessPixelRows(accessor =>
+            {
+                for (int y = 0; y < accessor.Height && opaque; y++)
+                    foreach (var pixel in accessor.GetRowSpan(y))
+                        if (pixel.A != 255)
+                        {
+                            opaque = false;
+                            break;
+                        }
+            });
+            return opaque;
         }
 
         string GetTargetName(SourceValue sourceName, SourceValue? targetName, SourceValue? type = null)

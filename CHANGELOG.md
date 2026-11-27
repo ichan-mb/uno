@@ -20,6 +20,7 @@ Unreleased
 - Rename manifest file in libraries (#495)
 - Remove framework directory from output path (#501)
 - Various tweaks and improvements (#490, #493, #496)
+- Kill process trees with .NET's `Process.Kill(entireProcessTree)`, which works on Linux too. On macOS this also stops a Gradle daemon that a cancelled build started, so the next build may take longer to start the daemon.
 
 ### unoconfig
 - Remove `isRoot` and `skipIfRoot` properties (#451)

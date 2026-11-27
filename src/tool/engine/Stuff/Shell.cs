@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.IO;
 using System.Text;
 using Uno;
 using Uno.Logging;
@@ -32,6 +33,17 @@ namespace Uno.Build.Stuff
         {
             // Exit code=1 means a warning was given, no problem
             Run(log, "unzip", new[] {file, "-d", directory}, acceptCode: 1);
+        }
+
+        public static bool IsOnPath(string command)
+        {
+            var path = Environment.GetEnvironmentVariable("PATH") ?? "";
+
+            foreach (var dir in path.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
+                if (File.Exists(Path.Combine(dir, command)))
+                    return true;
+
+            return false;
         }
 
         public static void Zip(Log log, string directory, string file)

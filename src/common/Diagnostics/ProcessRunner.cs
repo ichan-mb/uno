@@ -13,7 +13,17 @@ namespace Uno.Diagnostics
         {
             _proc = proc;
             ct.Register(proc.KillTree);
-            _handler = (s, e) => proc.KillTree();
+            // This runs on the runtime's signal thread, where an exception would crash the host.
+            _handler = (s, e) =>
+            {
+                try
+                {
+                    proc.KillTree();
+                }
+                catch
+                {
+                }
+            };
             Console.CancelKeyPress += _handler; // TODO: Move handling of cancel key press, and use cancellation token instead
 
             proc.Start();

@@ -25,7 +25,9 @@ namespace Uno.Diagnostics
                             return indexedName;
                     }
                 }
-                catch (InvalidOperationException e)
+                // Not only InvalidOperationException: PerformanceCounter throws
+                // PlatformNotSupportedException when a host ships the placeholder assembly.
+                catch (Exception e)
                 {
                     Log.Default.Warning(
                         "Exception in FindIndexedProcessName(): " + e.Message + "\n\n" +
@@ -49,8 +51,17 @@ namespace Uno.Diagnostics
                 if (indexedProcessName == null)
                     return null;
 
-                var parentId = new PerformanceCounter("Process", "Creating Process ID", indexedProcessName);
-                var pid = parentId.NextSample().RawValue;
+                long pid;
+                try
+                {
+                    var parentId = new PerformanceCounter("Process", "Creating Process ID", indexedProcessName);
+                    pid = parentId.NextSample().RawValue;
+                }
+                catch (Exception)
+                {
+                    return null;
+                }
+
                 return Process
                     .GetProcesses()
                     .FirstOrDefault(
@@ -84,15 +95,17 @@ namespace Uno.Diagnostics
             return parents;
         }
 
+        // Best effort: the process may already have exited, or we may lack access to it.
+        // Note that this does nothing when called on the current process, because .NET refuses
+        // to kill a tree containing the caller.
         public static void KillTree(this Process process)
         {
             try
             {
-                ProcessTreeKiller.KillTree(process.Id);
+                process.Kill(entireProcessTree: true);
             }
-            catch (InvalidOperationException)
+            catch (Exception)
             {
-                // Ignore
             }
         }
     }

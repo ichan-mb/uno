@@ -26,7 +26,7 @@ set JAVA_HOME=@(jdk.directory:nativePath)
 for /D %%D in ("@(sdk.directory:nativePath)\cmake\*") do (
     if exist "%%D\bin" (
         echo Using %%D
-        set PATH="%%D\bin;%PATH%"
+        set "PATH=%%D\bin;%PATH%"
         goto BUILD
     )
 )
