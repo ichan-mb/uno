@@ -29,7 +29,7 @@ fi
 
 # Run compiler tests
 if [[ "$TARGET" == dotnet ]]; then
-    dotnet src/test/compiler-test/bin/$CONFIGURATION/net6.0/compiler-test.dll
+    dotnet src/test/compiler-test/bin/$CONFIGURATION/net10.0/compiler-test.dll
 fi
 
 # Check that all libraries build without errors
@@ -39,8 +39,8 @@ uno build $TARGET --no-strip tests/libtest
 if [[ "$TARGET" == dotnet ]]; then
     h1 "Running dotnet tests"
     dotnet test --verbosity detailed \
-        src/test/tests/bin/$CONFIGURATION/net6.0/Uno.TestRunner.Tests.dll \
-        src/ux/tests/bin/$CONFIGURATION/net6.0/Uno.UX.Markup.Tests.dll
+        src/test/tests/bin/$CONFIGURATION/net10.0/Uno.TestRunner.Tests.dll \
+        src/ux/tests/bin/$CONFIGURATION/net10.0/Uno.UX.Markup.Tests.dll
 fi
 
 if [[ "$SKIP_SUBSEQUENT" == 1 ]]; then

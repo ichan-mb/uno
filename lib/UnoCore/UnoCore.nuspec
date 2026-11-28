@@ -12,6 +12,6 @@
     <copyright>Copyright 2018-2024</copyright>
   </metadata>
   <files>
-    <file src="build\release\dotnet\*.dll" target="lib\net6.0" />
+    <file src="build\release\dotnet\*.dll" target="lib\net10.0" />
   </files>
 </package>

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.ComponentModel;
 using System.Drawing;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -103,12 +104,16 @@ namespace Uno.AppLoader
             }
         }
 
+        // Set at run time only; the designer must not save them.
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public string Title
         {
             get { return Text; }
             set { Text = value; }
         }
 
+        // Set at run time only; the designer must not save them.
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public bool IsFullscreen
         {
             get

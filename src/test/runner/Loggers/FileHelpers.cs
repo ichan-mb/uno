@@ -22,8 +22,8 @@ namespace Uno.TestRunner.Loggers
                     FileShare.ReadWrite))
                 {
                     var bytes = new byte[maxLength];
-                    s.Read(bytes, 0, maxLength);
-                    return Encoding.UTF8.GetString(bytes);
+                    var count = s.ReadAtLeast(bytes, maxLength, throwOnEndOfStream: false);
+                    return Encoding.UTF8.GetString(bytes, 0, count);
                 }
             }
         }
