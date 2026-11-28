@@ -1,17 +1,17 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFrameworks>net6.0</TargetFrameworks>
+        <TargetFrameworks>net10.0</TargetFrameworks>
         <Description>IKVM implementation of System.Reflection[.Emit]</Description>
         <DefineConstants>$(DefineConstants);EMITTERS</DefineConstants>
+        <!-- C# 14 makes 'field' a keyword in property accessors, and this code uses it as a name. -->
+        <LangVersion>13</LangVersion>
+        <!-- Third-party code kept as it is: obsolete serialization and crypto APIs, and a Read that may be short. -->
+        <NoWarn>$(NoWarn);SYSLIB0044;SYSLIB0045;SYSLIB0050;SYSLIB0051;CA2022</NoWarn>
     </PropertyGroup>
 
-    <ItemGroup>
-        <PackageReference Include="System.Memory" Version="4.5.5" />
-    </ItemGroup>
-
-    <ItemGroup Condition=" '$(TargetFramework)' == 'net6.0' ">
-        <PackageReference Include="System.Security.Cryptography.Pkcs" Version="6.0.3" />
+    <ItemGroup Condition=" '$(TargetFramework)' == 'net10.0' ">
+        <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.15" />
     </ItemGroup>
 
 </Project>

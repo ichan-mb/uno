@@ -19,6 +19,11 @@ environment:
 
 install:
   - ps: Install-Product node $env:nodejs_version
+  # The image has no .NET 10 SDK (global.json); install it next to the others.
+  - ps: |
+      Invoke-WebRequest https://dot.net/v1/dotnet-install.ps1 -OutFile dotnet-install.ps1
+      .\dotnet-install.ps1 -Channel 10.0 -InstallDir "$env:ProgramFiles\dotnet"
+      dotnet --version
   - ps: |
       if ($env:TARGET -eq "android") {
         Invoke-Expression "npm install android-build-tools@2.x -g"

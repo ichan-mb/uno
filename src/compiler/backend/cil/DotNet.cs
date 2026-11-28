@@ -14,8 +14,8 @@ namespace Uno.Compiler.Backends.CIL
         public static readonly string WindowsDesktopAppDirectory = GetWindowsDesktopAppDirectory();
 
         // Returns something like:
-        // * /usr/local/share/dotnet/packs/Microsoft.NETCore.App.Ref/6.0.8/ref/net6.0
-        // * C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.9\ref\net6.0
+        // * /usr/local/share/dotnet/packs/Microsoft.NETCore.App.Ref/10.0.1/ref/net10.0
+        // * C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\10.0.1\ref\net10.0
         static string GetRefAssemblyDirectory()
         {
             string version;
@@ -26,7 +26,8 @@ namespace Uno.Compiler.Backends.CIL
                 "Microsoft.NETCore.App.Ref",
                 version,
                 "ref",
-                "net6.0"
+                // The reference pack of the runtime uno runs on: net<major>.0.
+                "net" + version.Split('.')[0] + ".0"
             );
         }
 

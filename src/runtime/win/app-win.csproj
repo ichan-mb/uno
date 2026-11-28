@@ -3,7 +3,7 @@
   <Import Project="..\..\..\node_modules\@fuse-open\opentk\ANGLE.props" Condition="Exists('..\..\..\node_modules\@fuse-open\opentk\ANGLE.props')" />
 
   <PropertyGroup>
-    <TargetFramework>net6.0-windows</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <RootNamespace>Uno.AppLoader</RootNamespace>
     <AssemblyName>uno-app</AssemblyName>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
